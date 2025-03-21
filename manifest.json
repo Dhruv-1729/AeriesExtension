@@ -1,25 +1,26 @@
 {
-    "manifest_version": 3,
-    "name": "Dhruv's Grade Calculator",
-    "version": "3.2",
-    "description": "Extension for Aeries which calculates the overall grade for a subject because SOME TEACHERS are too lazy to turn the option on",
-    "permissions": ["activeTab", "scripting"],
-    "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "icon16.png",
-        "32": "icon32.png",
-        "48": "icon48.png",
-        "128": "icon128.png"
-      }
-    },
-    "content_scripts": [
-      {
-        "matches": ["*://fremontusd.aeries.net/*"],
-        "js": ["content.js"],
-        "run_at": "document_idle"
-      }
-    ]
-  }
+  "manifest_version": 3,
+  "name": "Dhruv's Grade Calculator",
+  "version": "3.0",
+  "description": "Extension for Aeries which calculates the overall grade for a subject because SOME TEACHERS are too lazy to turn the option on",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://localhost:1700/*"],
   
-
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["*://fremontusd.aeries.net/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
