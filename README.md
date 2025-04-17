@@ -1,4 +1,4 @@
-Dhruv's Aeries Grade Checker Extension ||            Last Updated: 03/20/2025
+Dhruv's Aeries Grade Checker Extension ||            Last Updated: 04/17/2025
 
 Works with Aeries ONLY
 
