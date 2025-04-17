@@ -4,7 +4,7 @@ function getTeacherName() {
     return teacherElement ? teacherElement.innerText.trim() : "Unknown";
 }
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("📩 Message received in content script:", request);
+    console.log("Message received in content script:", request);
 
     if (request.action === "calculateGrade") {
         console.log("Calculating grade...");
@@ -17,11 +17,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log("Fetched grade data:", gradeData);
         sendResponse({ gradeData });
     } else {
-        console.warn("⚠️ Unknown action received:", request.action);
+        console.warn("Unknown action received:", request.action);
     }
     return true;
 });
 
+// Debugging log to check the teacher's name
 const teacherName = getTeacherName();
 console.log("Teacher's Name:", teacherName);
 
@@ -32,11 +33,9 @@ function calculateGrade() {
         return { success: false, message: "Error: could not fetch data" };
     }
 
-    // Check if the "Perc of Grade" column exists
     const firstRow = rows[0];
     const cells = firstRow.querySelectorAll("td");
-    const hasPercOfGrade = cells.length >= 6; // If there are 6 or more columns, "Perc of Grade" exists
-
+    const hasPercOfGrade = cells.length >= 6; 
     let totalPoints = 0;
     let totalMax = 0;
     let weightedSum = 0;
@@ -51,12 +50,11 @@ function calculateGrade() {
         console.log(`Row ${index} has ${cells.length} cells`);
         
         if (cells.length >= (hasPercOfGrade ? 6 : 5)) {
-            // Extract data from the correct columns
             const categoryName = cells[0]?.innerText.trim();
-            const weightText = hasPercOfGrade ? cells[1]?.innerText.trim() : "100"; // Default to 100% if "Perc of Grade" doesn't exist
-            const pointsText = hasPercOfGrade ? cells[2]?.innerText.trim() : cells[1]?.innerText.trim(); // Adjust column index
-            const maxText = hasPercOfGrade ? cells[3]?.innerText.trim() : cells[2]?.innerText.trim(); // Adjust column index
-            const percentageText = hasPercOfGrade ? cells[4]?.innerText.trim() : cells[3]?.innerText.trim(); // Adjust column index
+            const weightText = hasPercOfGrade ? cells[1]?.innerText.trim() : "100"; 
+            const pointsText = hasPercOfGrade ? cells[2]?.innerText.trim() : cells[1]?.innerText.trim(); 
+            const maxText = hasPercOfGrade ? cells[3]?.innerText.trim() : cells[2]?.innerText.trim(); 
+            const percentageText = hasPercOfGrade ? cells[4]?.innerText.trim() : cells[3]?.innerText.trim();
             
             console.log(`Processing ${categoryName}: Weight = ${weightText}, Points = ${pointsText}, Max = ${maxText}, Percentage = ${percentageText}`);
             
@@ -80,14 +78,12 @@ function calculateGrade() {
                 return;
             }
             
-            // Validate the numbers
             if (isNaN(points) || isNaN(max)) {
                 console.log(`Row ${index} skipped: invalid numbers after parsing: Points: ${points}, Max: ${max}`);
                 return;
             }
             
             if (hasPercOfGrade) {
-                // Use weighted calculation if "Perc of Grade" exists
                 if (isNaN(weight) || isNaN(percentage)) {
                     console.log(`Row ${index} skipped: invalid numbers after parsing: Weight: ${weight}, Percentage: ${percentage}`);
                     return;
@@ -148,57 +144,60 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 function getGradeTableData() {
     const table = [];
-    const rows = document.querySelectorAll("tr[id^='ctl00_MainContent_subGBS_DataSummary_']");
-    
+    const rows = Array.from(document.querySelectorAll("tr[id^='ctl00_MainContent_subGBS_DataSummary_']"))
+                     .filter(row => !row.querySelector("td:first-child")?.innerText.toLowerCase().includes("total"));
+
+    console.log("Number of rows found for dropdown:", rows.length);
+
     rows.forEach((row, index) => {
         try {
             const cells = row.querySelectorAll("td");
+            console.log(`Dropdown Row ${index} has ${cells.length} cells`);
             
-            // Skip if it's the Total row
-            const categoryName = cells[0]?.innerText.trim();
-            if (categoryName.toLowerCase() === "total") {
-                console.log("Skipping Total row in getGradeTableData");
-                return;
-            }
-            
-            if (cells.length >= 6) {
-                // Updated column indices based on new screenshot
-                const category = cells[0].innerText.trim();
-                const weightText = cells[1].innerText.trim();   // Perc of Grade
-                const pointsText = cells[2].innerText.trim();   // Points
-                const maxText = cells[3].innerText.trim();      // Max
-                const percentText = cells[4].innerText.trim();  // Perc
+            if (cells.length >= 4) { // Make sure we have enough cells to get all data
+                const categoryName = cells[0].innerText.trim();
                 
+                // Check if we have weight column (6 cells means we have weight)
+                const hasPercOfGrade = cells.length >= 6;
+                
+                // Extract data from the appropriate cells
+                const weightText = hasPercOfGrade ? cells[1]?.innerText.trim() : "100";
+                const pointsText = hasPercOfGrade ? cells[2]?.innerText.trim() : cells[1]?.innerText.trim();
+                const maxText = hasPercOfGrade ? cells[3]?.innerText.trim() : cells[2]?.innerText.trim();
+                
+                // Parse the numbers, handling percentage signs
                 const weight = parseFloat(weightText.replace(/[^0-9.]/g, ""));
                 const points = parseFloat(pointsText.replace(/[^0-9.]/g, ""));
                 const max = parseFloat(maxText.replace(/[^0-9.]/g, ""));
-                const percentage = parseFloat(percentText.replace(/[^0-9.]/g, ""));
                 
-                // Validate that we got actual numbers
-                if (isNaN(weight) || isNaN(points) || isNaN(max) || isNaN(percentage)) {
-                    console.log(`Row ${index} skipped in getGradeTableData due to invalid numbers`);
-                    return;
-                }
+                console.log(`Dropdown Category found: "${categoryName}" with weight=${weight}, points=${points}, max=${max}`);
                 
                 table.push({
-                    category: category,
-                    weight: weight,
-                    points: points,
-                    max: max,
-                    weightDecimal: weight / 100
+                    category: categoryName,
+                    weight: isNaN(weight) ? 100 : weight,
+                    points: isNaN(points) ? 0 : points,
+                    max: isNaN(max) ? 0 : max
                 });
-                
-                console.log(`Added category to table: ${category}, Weight: ${weight}%, Points: ${points}, Max: ${max}, Percentage: ${percentage}%`);
+            } else {
+                console.warn(`Dropdown Row ${index} has too few cells.`);
             }
         } catch (error) {
-            console.error(`Error processing row ${index} in getGradeTableData:`, error);
+            console.error(`Error processing dropdown row ${index}:`, error);
         }
     });
     
+    console.log("Returning dropdown data:", table);
     return table;
 }
 
-// Modify your existing listener to handle the new message
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "getGradeData") {
+        const gradeData = getGradeTableData();
+        sendResponse({ gradeData });
+    }
+    return true;
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "calculateGrade") {
         const result = calculateGrade();
