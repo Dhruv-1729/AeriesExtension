@@ -18,7 +18,10 @@
   
   "content_scripts": [
     {
-      "matches": ["*://fremontusd.aeries.net/*"],
+      "matches": [
+      "*://fremontusd.aeries.net/*",
+      "*://go.musd.org/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
