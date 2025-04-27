@@ -10,5 +10,6 @@ function isAeriesPage() {
 setTimeout(() => {
     if (isAeriesPage()) {
         chrome.runtime.sendMessage({ action: "aeriesDetected" });
+        console.log("Aeries Gradebook website detected");
     }
 }, 500);
