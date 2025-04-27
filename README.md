@@ -7,8 +7,6 @@
 </div>
 
 ## How to install
-https://img.shields.io/badge/-v6.0-blue
-[![](https://img.shields.io/badge/Aeries_Grade_Extension-v6.1-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/v6.0)
 
 1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v6.1-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/v6.0)
 2. Go into your files and double-click the .zip file you just downloaded. It should create a folder.
@@ -17,4 +15,6 @@ https://img.shields.io/badge/-v6.0-blue
 5. The extension should now pop up in your All Extensions section. Just make sure you pin the extension (details -> Pin to toolbar) and thats it!
 
 
-Go to your Aeries gradebook to test it out. Follow the directions on the extension when you click it.
+
+## Usage
+Go to your Aeries *gradebook* page to test it out. Follow the directions on the extension when you click it. 
