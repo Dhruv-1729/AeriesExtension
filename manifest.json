@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Dhruv's Grade Calculator",
+  "name": "Aeries Grade Calculator",
   "version": "6.0",
-  "description": "Extension for Aeries which calculates the overall grade for a subject because some teachers are too lazy to turn the option on. Also has a what-if mode for browser.",
+  "description": "Extension for Aeries which calculates the overall grade for a subject because some teachers are too lazy to turn the option on. Also has a what-if grade mode.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["http://localhost:1700/*"],
   
@@ -18,11 +18,8 @@
   
   "content_scripts": [
     {
-      "matches": [
-      "*://fremontusd.aeries.net/*",
-      "*://go.musd.org/*"
-      ],
-      "js": ["content.js"],
+      "matches": ["<all_urls>"],
+      "js": ["content-detector.js", "content.js"],
       "run_at": "document_idle"
     }
   ]
