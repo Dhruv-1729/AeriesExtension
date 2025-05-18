@@ -1,7 +1,7 @@
 <div align="center">
 
   ## Dhruv's Aeries Grade Checker Extension 
-  *Last Updated: 04/17/2025*
+  *Last Updated: 05/18/2025*
 
 **Works with *Aeries* ONLY**
 </div>
