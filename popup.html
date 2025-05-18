@@ -32,8 +32,8 @@
     
     body {
       font-family: Arial, sans-serif;
-      width: 350px; /* Width of the popup window */
-      height: 500px; /* Height of the popup window */
+      width: 350px; 
+      height: 500px;
       padding: 15px;
       display: flex;
       flex-direction: column;
@@ -66,79 +66,69 @@
       background-color: #45a049;
     }
     
-    /* Spacing between grades */
     .grade-history div {
-      margin-bottom: 10px; /* Add spacing */
-      line-height: 1.5;   /* 1.5x line height */
+      margin-bottom: 10px; 
+      line-height: 1.5;  
     }
 
-    /* Header for last 3 grades */
     .history-header {
-      font-size: 1.2em; /* Slightly larger */
-      color: purple;    /* Purple color */
+      font-size: 1.2em; 
+      color: purple;   
       font-weight: bold;
     }
 
-    /* Bold overall grades */
     .overall-grade {
       font-weight: bold;
     }
 
-    /* Grade change text (default color for no change is gray) */
     .grade-change {
       margin-left: 5px;
     }
     
-    /* Result message styles */
     #result {
       margin-top: 15px;
-      margin-bottom: 20px; /* Added margin to push down the divider */
+      margin-bottom: 20px; 
       text-align: center;
       position: relative;
     }
 
-    /* Style for "Subject Grade is" and the grade percentage */
     .grade-label {
       font-size: 1.1em;
-      color: #004080; /* Darker color for visibility */
-      margin-top: 10px;
+      color: #004080;
+      margin-bottom: 5px;
     }
 
     .grade-value {
-      font-size: 2em; /* Much larger font size */
-      color: #004080; /* Darker color for emphasis */
+      font-size: 2em; 
+      color: #004080; 
       font-weight: bold;
       display: inline-block;
     }
 
 
       
-      /* In popup.html <style> section */
-    /* Update existing .calculate-icon rules */
+      
     .calculate-icon {
       cursor: pointer;
-      height: 32px;  /* Increased from 1.8em */
-      width: 32px;   /* Explicit width for control */
-      margin-left: 15px;  /* Space between percentage and icon */
+      height: 32px; 
+      width: 32px;   
+      margin-left: 15px;  
       display: none;
       vertical-align: middle;
-      position: absolute;  /* New positioning */
-      right: 10px;         /* Distance from right edge */
-      top: 50%;            /* Vertical centering */
-      transform: translateY(-50%); /* Perfect vertical center */
+      position: absolute;  
+      right: 10px;        
+      top: 50%;            
+      transform: translateY(-50%); 
    }
 
-    /* Update grade container for proper positioning */
     .grade-container {
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 10px;
-      position: relative;  /* Needed for absolute positioning of icon */
-      padding-right: 40px; /* Space for the icon */
-  }
+      position: relative;
+    }
 
-    /* Footer styling for author credit */
     .footer {
       font-size: 0.9em;
       color: black;
@@ -146,10 +136,9 @@
       margin-top: 20px;
     }
     
-    /* Style for the Reset History button */
     .reset-button {
-      padding: 6px 12px; /* Smaller padding */
-      font-size: 12px; /* Smaller font size */
+      padding: 6px 12px; 
+      font-size: 12px;
       background: linear-gradient(135deg, #ff7f50, #ff4500);
       color: white;
       border: none;
@@ -157,7 +146,7 @@
       cursor: pointer;
       transition: all 0.3s ease-in-out;
       margin-top: 10px;
-      width: 100px; /* Fixed width */
+      width: 100px; 
       text-align: center;
     }
 
@@ -165,22 +154,23 @@
       background: linear-gradient(135deg, #ff4500, #ff7f50);
     }
 
-    /* Position the Reset History button - moved up from the middle line */
     #resetHistoryContainer {
-      position: absolute;
-      bottom: 180px; /* Adjusted to be higher up from the divider */
-      right: 15px;
+      position: relative;
+      text-align: right;
+      margin-top: 10px;
+      margin-bottom: 10px;
       display: none;
     }
+
+
     
-    /* What-If section styling */
     .whatif-section {
-      display: none;
-      margin-top: 10px;
-      padding: 15px;
-      border-top: 1px solid #ddd;
-      position: relative;
-      top: 10px; /* Add some space between the reset button and the divider */
+        display: none;
+        margin-top: 10px;
+        padding: 15px 15px 15px 15px;
+        border-top: 3px solid #ddd;
+        position: relative;
+        top: 10px;
     }
 
     .whatif-header {
@@ -205,6 +195,7 @@
       font-size: 0.9em;
       color: #555;
     }
+
     
     .add-assignment-btn {
       background-color: #32a86d;
@@ -230,10 +221,12 @@
     }
     
     .add-assignment-form {
-      margin-top: 10px;
-      display: none;
+        margin-top: 10px;
+        display: none;
+        position: relative;
+        top: 0;
     }
-    
+      
     .category-select {
       width: 100%;
       padding: 8px;
@@ -275,7 +268,6 @@
       opacity: 1;
     }
     
-    /* Plus icon styling */
     .plus-icon {
       background-color: white;
       color: #32a86d;
@@ -288,7 +280,6 @@
       margin-left: 5px;
       font-weight: bold;
     }
-      /* Assignments list styling */
     .assignments-container {
       margin-top: 20px;
       border-top: 1px dashed #ddd;
@@ -324,6 +315,7 @@
       padding: 8px;
       border-bottom: 1px solid #eee;
     }
+    
 
     .assignment-item:last-child {
       border-bottom: none;
@@ -358,11 +350,10 @@
     }
 
     .edit-btn {
-      background-color: #9066f3;
-      color: black;
+      background-color: #060692;
+      color: rgb(255, 255, 255);
     }
 
-    /* Update the delete button styling to use an image */
     .delete-btn {
     background-color: transparent;
     border: none;
@@ -372,11 +363,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background-image: url('trashcan.png'); /* Make sure to add this PNG to your extension */
+    background-image: url('trashcan.png'); 
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
-    color: transparent; /* Hide the × character */
+    color: transparent; 
     }
 
     .delete-btn:hover {
@@ -384,39 +375,42 @@
     }
 
     .edit-btn:hover {
-      background-color: #b25ae6;
+      background-color: #02033b;
     }
 
     .delete-btn:hover {
       background-color: #ff3333;
     }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+
+
 </style>
 </head>
 <body>
-  <h2>Aeries Overall Grade Calculator</h2>
-  <h4>Go to the subject's <u>gradebook details</u> page and click the button to calculate!</h4>
+  <h2>Aeries Grade Calculator</h2>
+  <h4>Go to the subject's <u>gradebook details</u> page and click the button to fetch grades!</h4>
 
   <button id="calculate">Calculate Grade</button>
 
-  <!-- Result section for displaying grade and messages -->
   <div id="result">
-    <!-- This area will be updated by JavaScript with the result -->
   </div>
   <div id="loader" style="display: none;">
     <div class="spinner"></div>
     <p>Calculating...</p>
   </div>
-  <!-- History section for past grades -->
   <div id="history" class="grade-history">
-    <!-- This area will be updated by JavaScript with past grades -->
   </div>
 
-  <!-- Reset History button container -->
   <div id="resetHistoryContainer">
     <button id="resetHistory" class="reset-button">Reset History</button>
   </div>
-  
-  <!-- What-If section -->
+
+
   <div id="whatifSection" class="whatif-section">
     <div class="whatif-header">What-If Mode</div>
     
@@ -428,12 +422,19 @@
     <button id="addAssignmentBtn" class="add-assignment-btn">
       Add Assignment <span class="plus-icon">+</span>
     </button>
+    <button id="editAssignmentBtn" class="add-assignment-btn" style="background-color: #36cef7; margin-top: 10px;">
+      Edit Existing Assignment 
+    </button>
+    
     
     <div id="assignmentForm" class="add-assignment-form">
       <select id="categorySelect" class="category-select">
         <option value="" disabled selected>Select Category</option>
-        <!-- Categories will be populated by JavaScript -->
       </select>
+      <select id="assignmentSelect" class="category-select" style="display: none; margin-top: 10px;">
+        <option disabled selected>Select Assignment</option>
+      </select>
+
       
       <div class="score-input">
         <input type="number" id="scoreEarned" placeholder="0" min="0">
@@ -441,22 +442,19 @@
         <input type="number" id="scoreMax" placeholder="0" min="0">
         <span>points</span>
       </div>
-      
+
       <button id="confirmAssignment" class="confirm-btn" disabled>Input Assignment</button>
     </div>
-    <!-- Added assignments list section -->
   <div class="assignments-container">
     <h4 class="assignments-header">Added Assignments</h4>
     <div id="assignmentsList" class="assignments-list">
-      <!-- Assignments will be added here dynamically -->
-      <p class="no-assignments">No assignments added yet.</p>
+      <p class="no-assignments">No assignments added yet</p>
     </div>
   </div>
 </div>
   </div>
 
-  <!-- Footer with author credit -->
-  <div class="footer">Extension made by Dhruv!!</div>
+  <div class="footer">Extension made by Dhruv :<span>&#x29;</span></div>
 
   <script src="popup.js"></script>
 </body>
