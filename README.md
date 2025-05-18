@@ -8,7 +8,7 @@
 
 ## Installation
 
-1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v6.0-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.0)
+1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v7.0-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.0)
    
 2. Go into your files and double-click the .zip file you just downloaded. It should create a folder
    
