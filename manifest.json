@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aeries Grade Calculator",
-  "version": "7.0",
+  "version": "7.1",
   "description": "Aeries Gradebook extension for what-if grade calculation",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["http://localhost:1700/*"],
