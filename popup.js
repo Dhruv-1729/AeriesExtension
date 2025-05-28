@@ -16,16 +16,28 @@ function renderAssignmentsList() {
     whatIfAssignments.forEach((assignment, index) => {
         const assignmentItem = document.createElement("div");
         assignmentItem.className = "assignment-item";
-        assignmentItem.innerHTML = `
-            <div class="assignment-info">
-                <span class="assignment-category">${assignment.categoryName}</span>
-                <span class="assignment-score">${assignment.earned}/${assignment.max} points</span>
-            </div>
-            <div class="assignment-actions">
-                <button class="edit-btn" data-index="${index}">Edit</button>
-                <button class="delete-btn" data-index="${index}">×</button>
-            </div>
-        `;
+
+        if (assignment.type === 'removed') {
+            assignmentItem.innerHTML = `
+                <div class="assignment-info">
+                    <span class="assignment-category">${assignment.categoryName}</span>
+                    <span class="assignment-score" style="color: #c9302c;">${assignment.name} <strong>[REMOVED]</strong></span>
+                </div>
+                <div class="assignment-actions">
+                    </div>
+            `;
+        } else {
+            assignmentItem.innerHTML = `
+                <div class="assignment-info">
+                    <span class="assignment-category">${assignment.categoryName}</span>
+                    <span class="assignment-score">${assignment.earned}/${assignment.max} points</span>
+                </div>
+                <div class="assignment-actions">
+                    <button class="edit-btn" data-index="${index}">Edit</button>
+                    <button class="delete-btn" data-index="${index}">×</button>
+                </div>
+            `;
+        }
         assignmentsList.appendChild(assignmentItem);
     });
 
@@ -116,13 +128,16 @@ function resetAssignmentForm() {
     const scoreEarned = document.getElementById("scoreEarned");
     const scoreMax = document.getElementById("scoreMax");
     const confirmAssignment = document.getElementById("confirmAssignment");
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn"); // ADD THIS
 
     categorySelect.value = "";
     scoreEarned.value = "";
     scoreMax.value = "";
     confirmAssignment.disabled = true;
-    assignmentSelect.innerHTML = '<option value="" disabled selected>Select Assignment</option>'; 
-    assignmentSelect.style.display = "none"; 
+    assignmentSelect.innerHTML = '<option value="" disabled selected>Select Assignment</option>';
+    assignmentSelect.style.display = "none";
+    removeAssignmentBtn.style.display = "none"; // ADD THIS LINE to hide the button
+
     if (confirmAssignment.hasAttribute("data-edit-index")) {
         confirmAssignment.removeAttribute("data-edit-index");
     }
@@ -150,6 +165,7 @@ let currentGradeData = null;
 let currentTeacher = null;
 let tempAeriesOriginalEarned = null;
 let tempAeriesOriginalMax = null;
+let tempAeriesAssignmentName = null;
 let originalGrade = null;
 let whatIfAssignments = [];
 let isEditingExistingAssignment = false;
@@ -272,6 +288,7 @@ function showAssignmentSelector(assignments) {
     const assignmentSelect = document.getElementById("assignmentSelect");
     const scoreEarned = document.getElementById("scoreEarned"); 
     const scoreMax = document.getElementById("scoreMax");   
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn"); 
 
     assignmentSelect.innerHTML = '<option value="" disabled selected>Select Assignment</option>';
 
@@ -287,20 +304,14 @@ function showAssignmentSelector(assignments) {
     assignmentSelect.style.display = "block";
 
     assignmentSelect.onchange = () => {
-        //console.log("[assignmentSelect.onchange] Fired. isEditingExistingAssignment:", isEditingExistingAssignment, "Selected value:", assignmentSelect.value);
-
         const selectedIndex = parseInt(assignmentSelect.value);
         if (isNaN(selectedIndex)) {
-            //console.log("[assignmentSelect.onchange] Selected index is NaN. Exiting.");
+            removeAssignmentBtn.style.display = "none"; 
             return;
         }
 
         const selectedAssignment = assignments[selectedIndex];
-        if (!selectedAssignment) {
-            //console.log("[assignmentSelect.onchange] No selectedAssignment found for index:", selectedIndex);
-            return;
-        }
-        //console.log("[assignmentSelect.onchange] Selected Aeries Assignment:", JSON.parse(JSON.stringify(selectedAssignment)));
+        if (!selectedAssignment) return;
 
         scoreEarned.value = selectedAssignment.points;
         scoreMax.value = selectedAssignment.max;
@@ -308,11 +319,10 @@ function showAssignmentSelector(assignments) {
         if (isEditingExistingAssignment) {
             tempAeriesOriginalEarned = parseFloat(selectedAssignment.points);
             tempAeriesOriginalMax = parseFloat(selectedAssignment.max);
-            //console.log("[assignmentSelect.onchange] Stored Aeries originals for edit:", tempAeriesOriginalEarned, tempAeriesOriginalMax);
-        } else {
-            //console.log("[assignmentSelect.onchange] isEditingExistingAssignment is FALSE. Not storing Aeries originals.");
+            tempAeriesAssignmentName = selectedAssignment.name; 
+            removeAssignmentBtn.style.display = "block";
         }
-        checkFormValidity(); 
+        checkFormValidity();
     };
 }
 
@@ -542,6 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scoreMax = document.getElementById("scoreMax");
     const confirmAssignment = document.getElementById("confirmAssignment");
     const editAssignmentBtn = document.getElementById("editAssignmentBtn");
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn");
 
     addAssignmentBtn.addEventListener("click", () => {
         resetAssignmentForm(); 
@@ -563,6 +574,32 @@ document.addEventListener('DOMContentLoaded', () => {
         assignmentSelect.style.display = "block"; 
         moveFormBelow(editAssignmentBtn);
         checkFormValidity();
+    });
+    removeAssignmentBtn.addEventListener("click", () => {
+    if (!isEditingExistingAssignment || tempAeriesOriginalEarned === null) {
+        console.error("Remove button clicked, but no Aeries assignment data is stored.");
+        return;
+    }
+
+    const categoryIndex = parseInt(categorySelect.value);
+    const categoryName = currentGradeData[categoryIndex]?.category || "Unknown";
+
+    const removalAssignment = {
+        categoryIndex,
+        categoryName,
+        name: tempAeriesAssignmentName, 
+        earned: 0, 
+        max: 0,    
+        originalEarned: tempAeriesOriginalEarned, 
+        originalMax: tempAeriesOriginalMax,   
+        type: 'removed' 
+    };
+    whatIfAssignments.push(removalAssignment);
+
+    renderAssignmentsList();
+    recalculateWhatIfGrade();
+    assignmentForm.style.display = "none";
+    resetAssignmentForm();
     });
 
     categorySelect.addEventListener("change", () => {
@@ -664,4 +701,4 @@ document.addEventListener('DOMContentLoaded', () => {
     checkFormValidity();
 });
 
-//console.log("popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));
+//console.log("🟡 popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));
