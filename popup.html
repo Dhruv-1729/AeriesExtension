@@ -239,7 +239,24 @@
       display: flex;
       align-items: center;
       margin-bottom: 10px;
+      width: 100%;
     }
+    .remove-assignment-btn {
+      background-color: #e03f39; 
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: auto; 
+      transition: background-color 0.2s;
+    }
+
+.remove-assignment-btn:hover {
+  background-color: #ca221c; 
+}
     
     .score-input input {
       width: 60px;
@@ -441,8 +458,8 @@
         <span>of</span>
         <input type="number" id="scoreMax" placeholder="0" min="0">
         <span>points</span>
+        <button id="removeAssignmentBtn" class="remove-assignment-btn" style="display: none;">REMOVE ASSIGNMENT</button>
       </div>
-
       <button id="confirmAssignment" class="confirm-btn" disabled>Input Assignment</button>
     </div>
   <div class="assignments-container">
