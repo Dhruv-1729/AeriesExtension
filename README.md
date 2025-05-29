@@ -1,14 +1,14 @@
 <div align="center">
 
   ## Dhruv's Aeries Grade Checker Extension 
-  *Last Updated: 05/18/2025*
+  *Last Updated: 05/29/2025*
 
 **Works with *Aeries* ONLY**
 </div>
 
 ## Installation
 
-1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v7.0-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.0)
+1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v7.1-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.1)
    
 2. Go into your files and double-click the .zip file you just downloaded. It should create a folder
    
