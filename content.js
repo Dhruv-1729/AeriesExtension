@@ -249,4 +249,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ gradeData });
     }
     return true;
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
