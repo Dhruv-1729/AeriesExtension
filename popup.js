@@ -1,308 +1,773 @@
+// popup.js
 
-function saveGrade(grade, teacher) {
-    const currentDate = new Date().toLocaleString();
 
-    chrome.storage.local.get({ gradesByTeacher: {} }, (data) => {
-        const gradesByTeacher = data.gradesByTeacher || {};
+function renderAssignmentsList() {
+    const assignmentsList = document.getElementById("assignmentsList");
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); // Get the container
 
-        if (!gradesByTeacher[teacher]) {
-            gradesByTeacher[teacher] = [];
+
+    if (!assignmentsList) return;
+
+    assignmentsList.innerHTML = "";
+
+    if (whatIfAssignments.length === 0) {
+        assignmentsList.innerHTML = '<p class="no-assignments">No assignments added yet.</p>';
+        return;
+    }
+    if (lastRemovedOperation) {
+        undoRemoveContainer.style.display = "block";
+    } else {
+        undoRemoveContainer.style.display = "none";
+    }
+    whatIfAssignments.forEach((assignment, index) => {
+        const assignmentItem = document.createElement("div");
+        assignmentItem.className = "assignment-item";
+
+        if (assignment.type === 'removed') {
+            assignmentItem.innerHTML = `
+                <div class="assignment-info">
+                    <span class="assignment-category">${assignment.categoryName}</span>
+                    <span class="assignment-score" style="color: #c9302c;">${assignment.name} <strong>[REMOVED]</strong></span>
+                </div>
+                <div class="assignment-actions">
+                    </div>
+            `;
+        } else {
+            assignmentItem.innerHTML = `
+                <div class="assignment-info">
+                    <span class="assignment-category">${assignment.categoryName}</span>
+                    <span class="assignment-score">${assignment.earned}/${assignment.max} points</span>
+                </div>
+                <div class="assignment-actions">
+                    <button class="edit-btn" data-index="${index}">Edit</button>
+                    <button class="delete-btn" data-index="${index}">×</button>
+                </div>
+            `;
         }
+        assignmentsList.appendChild(assignmentItem);
+    });
 
-        // Check for consecutive duplicates
-        const lastGrade = gradesByTeacher[teacher][0]?.grade;
-        if (lastGrade && parseFloat(lastGrade) === parseFloat(grade)) {
-            console.log(`Grade ${grade}% not added due to consecutive duplicate.`);
-            return;
-        }
+    document.querySelectorAll(".edit-btn").forEach(button => {
+        button.addEventListener("click", function() {
+            const index = parseInt(this.getAttribute("data-index"));
+            editAssignment(index);
+        });
+    });
 
-        // Add the new grade to the top of the teacher's grades array
-        gradesByTeacher[teacher].unshift({ grade, date: currentDate });
-
-        // Keep only the last three grades for this teacher
-        gradesByTeacher[teacher] = gradesByTeacher[teacher].slice(0, 3);
-
-        chrome.storage.local.set({ gradesByTeacher }, () => {
-            if (chrome.runtime.lastError) {
-                console.error("Error saving grades to storage:", chrome.runtime.lastError.message);
-            } else {
-                console.log(`Grades saved for ${teacher}:`, gradesByTeacher[teacher]);
-            }
+    document.querySelectorAll(".delete-btn").forEach(button => {
+        button.addEventListener("click", function() {
+            const index = parseInt(this.getAttribute("data-index"));
+            deleteAssignment(index);
         });
     });
 }
 
-function displayLastGrades(currentGrade, currentTeacher) {
-    const historyElement = document.getElementById("history");
+function saveGrade(grade, teacher) {
+    return new Promise((resolve) => {
+        const currentDate = new Date().toLocaleString();
+        chrome.storage.local.get({ gradesByTeacher: {} }, (data) => {
+            const gradesByTeacher = data.gradesByTeacher || {};
+            if (!gradesByTeacher[teacher]) {
+                gradesByTeacher[teacher] = [];
+            }
+            const lastGradeEntry = gradesByTeacher[teacher][0];
+            if (lastGradeEntry && parseFloat(lastGradeEntry.grade) === parseFloat(grade)) {
+                resolve(false);
+                return;
+            }
+            gradesByTeacher[teacher].unshift({ grade, date: currentDate });
+            gradesByTeacher[teacher] = gradesByTeacher[teacher].slice(0, 3);
+            chrome.storage.local.set({ gradesByTeacher }, () => {
+                resolve(!chrome.runtime.lastError);
+            });
+        });
+    });
+}
 
+function displayLastGrades(currentTeacher) {
+    const historyElement = document.getElementById("history");
     chrome.storage.local.get({ gradesByTeacher: {} }, (data) => {
         const gradesByTeacher = data.gradesByTeacher || {};
         const grades = gradesByTeacher[currentTeacher] || [];
-
-        console.log(`Grades for teacher ${currentTeacher}:`, grades);
 
         if (grades.length === 0) {
             historyElement.innerHTML = "<p>No past grades available for this teacher.</p>";
             return;
         }
 
-        const historyHTML = grades.map((entry, index, arr) => {
-            const prevGrade = arr[index + 1]?.grade || entry.grade;
-            const gradeChange = entry.grade - prevGrade;
-            const changeColor = gradeChange > 0 ? "green" : gradeChange < 0 ? "red" : "gray";
-            const changeSymbol = gradeChange > 0 ? "+" : "";
+        let historyHTML = '<h4 style="font-size: 1.2em; color: purple;">Last 3 Grades:</h4>';
+        grades.forEach((entry, index, arr) => {
+            const prevGrade = arr[index + 1]?.grade;
+            let gradeChange = 0;
+            let changeSymbol = "";
+            let changeColor = "gray";
 
-            return `
+            if (prevGrade !== undefined) {
+                gradeChange = parseFloat(entry.grade) - parseFloat(prevGrade);
+                changeColor = gradeChange > 0 ? "green" : gradeChange < 0 ? "red" : "gray";
+                changeSymbol = gradeChange > 0 ? "+" : "";
+            }
+
+            historyHTML += `
                 <div style="margin-bottom: 10px; line-height: 1.5;">
                     <span><strong>${entry.grade}%</strong> (${entry.date})</span>
-                    <span style="color: ${changeColor}; margin-left: 5px;">${changeSymbol}${gradeChange.toFixed(2)}%</span>
+                    ${prevGrade !== undefined ? `<span style="color: ${changeColor}; margin-left: 5px;">${changeSymbol}${gradeChange.toFixed(2)}%</span>` : ''}
                 </div>`;
-        }).join("");
-
-        historyElement.innerHTML = `
-            <h4 style="font-size: 1.2em; color: purple;">Last 3 Grades:</h4>
-            ${historyHTML}
-        `;
+        });
+        historyElement.innerHTML = historyHTML;
     });
 }
 
 function showLoader() {
-    const resultElement = document.getElementById("result");
-    const loaderElement = document.getElementById("loader");
-
-    // Clear the result display and show the loader
-    resultElement.style.display = "none";
-    loaderElement.style.display = "block";
+    document.getElementById("result").style.display = "none";
+    document.getElementById("loader").style.display = "block";
 }
 
 function hideLoader() {
-    const resultElement = document.getElementById("result");
-    const loaderElement = document.getElementById("loader");
-
-    // Hide the loader and show the result
-    loaderElement.style.display = "none";
-    resultElement.style.display = "block";
+    document.getElementById("loader").style.display = "none";
+    document.getElementById("result").style.display = "block";
 }
 
-function displayResult(result) {
-    hideLoader(); // Ensure the loader is hidden
+function resetAssignmentForm() {
+    const categorySelect = document.getElementById("categorySelect");
+    const assignmentSelect = document.getElementById("assignmentSelect");
+    const scoreEarned = document.getElementById("scoreEarned");
+    const scoreMax = document.getElementById("scoreMax");
+    const confirmAssignment = document.getElementById("confirmAssignment");
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn"); 
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); 
 
+
+    categorySelect.value = "";
+    scoreEarned.value = "";
+    scoreMax.value = "";
+    confirmAssignment.disabled = true;
+    assignmentSelect.innerHTML = '<option value="" disabled selected>Select Assignment</option>';
+    assignmentSelect.style.display = "none";
+    removeAssignmentBtn.style.display = "none";
+    undoRemoveContainer.style.display = "none"; 
+    if(undoRemoveContainer) undoRemoveContainer.style.display = "none"; 
+    if (confirmAssignment.hasAttribute("data-edit-index")) {
+        confirmAssignment.removeAttribute("data-edit-index");
+    }
+}
+
+function animateGradeChange(element, startValue, endValue) {
+    const duration = 1000; 
+    const startTime = performance.now();
+    function updateValue(currentTime) {
+        const elapsedTime = currentTime - startTime;
+        if (elapsedTime < duration) {
+            const progress = elapsedTime / duration;
+            const currentValue = startValue + (endValue - startValue) * progress;
+            element.textContent = `${currentValue.toFixed(2)}%`;
+            requestAnimationFrame(updateValue);
+        } else {
+            element.textContent = `${endValue.toFixed(2)}%`;
+        }
+    }
+    requestAnimationFrame(updateValue);
+}
+
+// global vars
+let currentGradeData = null;
+let currentTeacher = null;
+let lastRemovedOperation = null;
+let tempAeriesOriginalEarned = null;
+let tempAeriesOriginalMax = null;
+let tempAeriesAssignmentName = null;
+let originalGrade = null;
+let whatIfAssignments = [];
+let isEditingExistingAssignment = false;
+async function displayResult(result) {
+    hideLoader();
     const resultElement = document.getElementById("result");
     const resetHistoryContainer = document.getElementById("resetHistoryContainer");
 
     if (result.success) {
-        resultElement.innerHTML = `
-            <div class="grade-label">Overall Grade is</div>
-            <div class="grade-value">${result.grade}%</div>
-        `;
-        resultElement.setAttribute("data-teacher", result.teacher); // Store the teacher name for resetting history
-        saveGrade(result.grade, result.teacher);
-        displayLastGrades(result.grade, result.teacher);
+        originalGrade = parseFloat(result.grade);
+        currentTeacher = result.teacher;
 
-        // Show the Reset History button
+        resultElement.innerHTML = `
+            <div class="grade-label" style="text-align: center;">Overall Grade is</div>
+            <div class="grade-container" style="display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
+                <div class="grade-value">${result.grade}%</div>
+            </div>
+        `;
+
+        let calculateIcon = document.querySelector(".calculate-icon");
+        if (!calculateIcon) {
+            calculateIcon = document.createElement("img");
+            calculateIcon.className = "calculate-icon";
+            calculateIcon.addEventListener("click", toggleWhatIfMode);
+        }
+        calculateIcon.src = chrome.runtime.getURL("Calculator Icon.png");
+        calculateIcon.alt = "What-If Calculator";
+        calculateIcon.title = "Try What-If Grade";
+        calculateIcon.style.display = "inline-block";
+
+        const container = document.querySelector(".grade-container");
+        if (container && !container.contains(calculateIcon)) {
+            container.appendChild(calculateIcon);
+        }
+
+        resultElement.setAttribute("data-teacher", result.teacher);
+        await saveGrade(result.grade, result.teacher);
+        displayLastGrades(result.teacher); 
         resetHistoryContainer.style.display = "block";
     } else {
         resultElement.innerHTML = `<span style="color: red;">${result.message}</span>`;
-        resetHistoryContainer.style.display = "none"; // Hide the button if there's an error
+        resetHistoryContainer.style.display = "none";
     }
 }
-// Function to reset grade history for the current teacher
+
 function resetGradeHistory(teacher) {
     chrome.storage.local.get({ gradesByTeacher: {} }, (data) => {
         const gradesByTeacher = data.gradesByTeacher || {};
-
         if (gradesByTeacher[teacher]) {
-            delete gradesByTeacher[teacher]; // Remove the teacher's grade history
+            delete gradesByTeacher[teacher];
             chrome.storage.local.set({ gradesByTeacher }, () => {
                 if (chrome.runtime.lastError) {
                     console.error("Error resetting grade history:", chrome.runtime.lastError.message);
                 } else {
-                    console.log(`Grade history reset for ${teacher}`);
-                    displayLastGrades(null, teacher); // Refresh the displayed history
-                    document.getElementById("resetHistoryContainer").style.display = "none"; // Hide the button after reset
+                    //console.log(`Grade history reset for ${teacher}`);
+                    displayLastGrades(teacher); 
+                    document.getElementById("resetHistoryContainer").style.display = "none";
                 }
             });
         }
     });
 }
-// Add event listener for the "Reset History" button
-document.addEventListener('DOMContentLoaded', () => {
-    const resetButton = document.getElementById("resetHistory");
 
+function toggleWhatIfMode() {
+    const whatifSection = document.getElementById("whatifSection");
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); 
+    if (whatifSection.style.display === "block") {
+        whatifSection.style.display = "none";
+        whatIfAssignments = []; 
+        document.getElementById("assignmentForm").style.display = "none"; 
+        resetAssignmentForm();
+        lastRemovedOperation = null; 
+    } else {
+        whatifSection.style.display = "block";
+        fetchGradeDataForDropdown(); 
+        document.getElementById("whatifGradeValue").textContent = `${originalGrade?.toFixed(2) ?? 'N/A'}%`;
+        renderAssignmentsList(); 
+    }
+}
+
+function fetchGradeDataForDropdown() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (!tabs[0] || !tabs[0].id) {
+            console.error("No active tab found or tab has no ID.");
+            populateCategoryDropdown([]);
+            return;
+        }
+        chrome.tabs.sendMessage(tabs[0].id, { action: "getGradeData" }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error("Runtime error in fetchGradeDataForDropdown:", chrome.runtime.lastError.message);
+                populateCategoryDropdown([]);
+            } else if (response && response.gradeData) {
+                currentGradeData = response.gradeData;
+                populateCategoryDropdown(currentGradeData);
+            } else {
+                console.error("No grade data received for dropdown.");
+                populateCategoryDropdown([]);
+            }
+        });
+    });
+}
+
+function populateCategoryDropdown(gradeData) {
+    const categorySelect = document.getElementById("categorySelect");
+    categorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
+    if (gradeData && gradeData.length > 0) {
+        gradeData.forEach((category, index) => {
+            const option = document.createElement("option");
+            option.value = index;
+            option.textContent = category.category;
+            categorySelect.appendChild(option);
+        });
+    } else {
+        categorySelect.innerHTML = '<option value="" disabled selected>No categories available</option>';
+    }
+}
+
+
+function showAssignmentSelector(assignments) {
+    //console.log("Showing assignment selector with", assignments.length, "assignments");
+    const assignmentSelect = document.getElementById("assignmentSelect");
+    const scoreEarned = document.getElementById("scoreEarned"); 
+    const scoreMax = document.getElementById("scoreMax");   
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn"); 
+
+    assignmentSelect.innerHTML = '<option value="" disabled selected>Select Assignment</option>';
+
+    assignments.forEach((assignment, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = `${assignment.name} (${assignment.points}/${assignment.max})`;
+        option.dataset.points = assignment.points;
+        option.dataset.max = assignment.max;
+        assignmentSelect.appendChild(option);
+    });
+
+    assignmentSelect.style.display = "block";
+
+    assignmentSelect.onchange = () => {
+        const selectedIndex = parseInt(assignmentSelect.value);
+        if (isNaN(selectedIndex)) {
+            removeAssignmentBtn.style.display = "none"; 
+            return;
+        }
+
+        const selectedAssignment = assignments[selectedIndex];
+        if (!selectedAssignment) return;
+
+        scoreEarned.value = selectedAssignment.points;
+        scoreMax.value = selectedAssignment.max;
+
+        if (isEditingExistingAssignment) {
+            tempAeriesOriginalEarned = parseFloat(selectedAssignment.points);
+            tempAeriesOriginalMax = parseFloat(selectedAssignment.max);
+            tempAeriesAssignmentName = selectedAssignment.name; 
+            removeAssignmentBtn.style.display = "block";
+            lastRemovedOperation = null;
+            document.getElementById("undoRemoveContainer").style.display = "none";
+        } else { 
+            removeAssignmentBtn.style.display = "none";
+        }
+        checkFormValidity();
+    };
+}
+
+
+function fetchAssignmentsForCategory(categoryIndex) {
+    const assignmentSelect = document.getElementById("assignmentSelect");
+    showLoaderInSelect(assignmentSelect); 
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (!tabs[0] || !tabs[0].id) {
+            console.error("No active tab found in fetchAssignmentsForCategory.");
+            assignmentSelect.innerHTML = '<option value="" disabled selected>Error: No active tab</option>';
+            assignmentSelect.style.display = "block";
+            return;
+        }
+        chrome.tabs.sendMessage(tabs[0].id, {
+            action: "getAssignmentsInCategory",
+            categoryIndex: parseInt(categoryIndex)
+        }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error("Runtime error in fetchAssignmentsForCategory:", chrome.runtime.lastError.message);
+                assignmentSelect.innerHTML = '<option value="" disabled selected>Error fetching assignments</option>';
+                assignmentSelect.style.display = "block";
+                return;
+            }
+
+            if (response && response.assignments && response.assignments.length > 0) {
+                showAssignmentSelector(response.assignments);
+            } else {
+                assignmentSelect.innerHTML = '<option value="" disabled selected>No assignments found</option>';
+                assignmentSelect.style.display = "block";
+            }
+        });
+    });
+}
+
+function checkFormValidity() {
+    const categorySelect = document.getElementById("categorySelect");
+    const assignmentSelect = document.getElementById("assignmentSelect");
+    const scoreEarned = document.getElementById("scoreEarned");
+    const scoreMax = document.getElementById("scoreMax");
+    const confirmAssignment = document.getElementById("confirmAssignment");
+
+    const categoryValid = categorySelect.value !== "";
+    const earnedNumeric = !isNaN(parseFloat(scoreEarned.value));
+    const maxNumeric = !isNaN(parseFloat(scoreMax.value));
+
+    const earnedValid = scoreEarned.value !== "" && earnedNumeric && parseFloat(scoreEarned.value) >= 0;
+    const maxValid = scoreMax.value !== "" && maxNumeric && parseFloat(scoreMax.value) > 0; 
+
+    const assignmentSelectionValid = !isEditingExistingAssignment || (assignmentSelect.value !== "" && assignmentSelect.selectedIndex > 0);
+
+    confirmAssignment.disabled = !(categoryValid && earnedValid && maxValid && assignmentSelectionValid);
+}
+
+
+function showLoaderInSelect(selectElement) {
+    selectElement.innerHTML = '<option value="" disabled selected>Loading assignments...</option>';
+    selectElement.style.display = "block";
+}
+
+
+function recalculateWhatIfGrade() {
+    //console.log("[recalculateWhatIfGrade] Called.");
+    if (!currentGradeData || currentGradeData.length === 0) {
+        console.error("[recalculateWhatIfGrade] No grade data available for recalculation");
+        const whatifGradeDisplay = document.getElementById("whatifGradeValue");
+        if (whatifGradeDisplay) whatifGradeDisplay.textContent = `${originalGrade?.toFixed(2) ?? 'N/A'}%`;
+        return originalGrade || 0;
+    }
+    //console.log("[recalculateWhatIfGrade] currentGradeData:", JSON.parse(JSON.stringify(currentGradeData)));
+    //console.log("[recalculateWhatIfGrade] whatIfAssignments:", JSON.parse(JSON.stringify(whatIfAssignments)));
+
+    const newGradeData = JSON.parse(JSON.stringify(currentGradeData));
+    const categoryChanges = {};
+
+    newGradeData.forEach((category, index) => {
+        categoryChanges[index] = { pointsAdded: 0, maxAdded: 0 };
+    });
+
+    whatIfAssignments.forEach(assignment => {
+        //console.log("[recalculateWhatIfGrade] Processing assignment:", JSON.parse(JSON.stringify(assignment)));
+        const categoryIndex = assignment.categoryIndex;
+        if (categoryChanges[categoryIndex] === undefined) {
+            console.warn(`[recalculateWhatIfGrade] Category index ${categoryIndex} not found in categoryChanges.`);
+            return;
+        }
+
+        const pointsDelta = parseFloat(assignment.earned) - (parseFloat(assignment.originalEarned) || 0);
+        const maxDelta = parseFloat(assignment.max) - (parseFloat(assignment.originalMax) || 0);
+        //console.log(`[recalculateWhatIfGrade] For categoryIndex ${categoryIndex}: pointsDelta=${pointsDelta}, maxDelta=${maxDelta}`);
+
+        categoryChanges[categoryIndex].pointsAdded += pointsDelta;
+        categoryChanges[categoryIndex].maxAdded += maxDelta;
+    });
+    //console.log("[recalculateWhatIfGrade] Calculated categoryChanges:", JSON.parse(JSON.stringify(categoryChanges)));
+
+    Object.keys(categoryChanges).forEach(categoryIndexStr => {
+        const index = parseInt(categoryIndexStr);
+        const category = newGradeData[index];
+        const changes = categoryChanges[index];
+
+        if (category) {
+            //console.log(`[recalculateWhatIfGrade] Category ${index} ('${category.category}') before changes: points=${category.points}, max=${category.max}`);
+            category.points = (parseFloat(category.points) || 0) + changes.pointsAdded;
+            category.max = (parseFloat(category.max) || 0) + changes.maxAdded;
+            //console.log(`[recalculateWhatIfGrade] Category ${index} ('${category.category}') after changes: points=${category.points}, max=${category.max}`);
+        }
+    });
+
+    let newWeightedSum = 0; 
+    let newTotalWeight = 0; 
+
+    newGradeData.forEach(category => {
+        if (!category.max || parseFloat(category.max) <= 0) return; 
+
+        const percentage = (parseFloat(category.points) / parseFloat(category.max)) * 100;
+        const weight = parseFloat(category.weight) / 100;
+
+        newWeightedSum += percentage * weight;
+        newTotalWeight += weight;
+    });
+
+    const newGrade = newTotalWeight > 0 ? newWeightedSum / newTotalWeight : originalGrade || 0;
+    //console.log(`[recalculateWhatIfGrade] Final calculation: weightedSum=${newWeightedSum.toFixed(4)}, totalWeight=${newTotalWeight.toFixed(4)}, newGrade=${newGrade.toFixed(2)}`);
+
+    const whatifGradeDisplay = document.getElementById("whatifGradeValue");
+    if (whatifGradeDisplay) {
+        const startGrade = parseFloat(whatifGradeDisplay.textContent.replace('%','')) || originalGrade || 0;
+        animateGradeChange(whatifGradeDisplay, startGrade, newGrade);
+    }
+    //console.log("New calculated grade:", newGrade.toFixed(2));
+    return newGrade;
+}
+
+function editAssignment(index) {
+    //console.log("[editAssignment] Called with index:", index);
+    const assignmentForm = document.getElementById("assignmentForm");
+    const categorySelect = document.getElementById("categorySelect");
+    const scoreEarned = document.getElementById("scoreEarned");
+    const scoreMax = document.getElementById("scoreMax");
+    const confirmAssignment = document.getElementById("confirmAssignment");
+    const assignmentSelect = document.getElementById("assignmentSelect"); 
+    const assignment = whatIfAssignments[index];
+    if (!assignment) {
+        console.error(`[editAssignment] No assignment found at index ${index}`);
+        return;
+    }
+    //console.log("[editAssignment] Assignment to edit (from whatIfAssignments):", JSON.parse(JSON.stringify(assignment)));
+
+
+    categorySelect.value = assignment.categoryIndex;
+    scoreEarned.value = assignment.earned;
+    scoreMax.value = assignment.max;
+
+    confirmAssignment.setAttribute("data-edit-index", index);
+    //console.log("[editAssignment] Set data-edit-index to:", index);
+    confirmAssignment.textContent = "Update Assignment";
+
+    isEditingExistingAssignment = false; 
+    tempAeriesOriginalEarned = null;  
+    tempAeriesOriginalMax = null;   
+    assignmentSelect.style.display = "none";
+    assignmentForm.style.display = "block";
+    moveFormBelow(document.querySelector(".assignments-header") || document.getElementById("editAssignmentBtn"));
+    checkFormValidity();
+}
+
+function deleteAssignment(index) {
+    //console.log(`[deleteAssignment] Deleting assignment at index ${index}`);
+    whatIfAssignments.splice(index, 1);
+    renderAssignmentsList();
+    recalculateWhatIfGrade();
+}
+
+function moveFormBelow(buttonElement) {
+    const form = document.getElementById("assignmentForm");
+    if (buttonElement && form) {
+        buttonElement.insertAdjacentElement("afterend", form);
+        form.style.display = "block"; 
+    } else {
+        console.warn("Could not move form, buttonElement or form not found", buttonElement, form);
+    }
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    //console.log("Popup DOM loaded!");
+
+    document.getElementById("calculate").addEventListener("click", () => {
+        showLoader();
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0] || !tabs[0].id) {
+                console.error("No active tab to calculate grade.");
+                displayResult({ success: false, message: "Error: No active tab found." });
+                return;
+            }
+
+                chrome.tabs.sendMessage(tabs[0].id, { action: "calculateGrade" }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        console.error("Runtime error from calculateGrade:", chrome.runtime.lastError.message);
+                        displayResult({ success: false, message: "Error: Could not fetch data from page." });
+                    } else if (response) {
+                        displayResult(response);
+                    } else {
+                        displayResult({ success: false, message: "No response from content script for grade calculation." });
+                    }
+                });
+        });
+    });
+
+    const resetButton = document.getElementById("resetHistory");
     resetButton.addEventListener("click", () => {
-        const teacher = document.getElementById("result").getAttribute("data-teacher");
+        const teacher = document.getElementById("result")?.getAttribute("data-teacher");
         if (teacher) {
             resetGradeHistory(teacher);
         } else {
-            console.log("No teacher found to reset history for.");
+            //console.log("No teacher found to reset history for.");
         }
     });
-});
-document.getElementById("calculate").addEventListener("click", () => {
-    showLoader(); // Show the loader when the button is clicked
 
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        setTimeout(() => {
-            // Simulate a 2-second delay for the loading effect
-            chrome.tabs.sendMessage(tabs[0].id, { action: "calculateGrade" }, (response) => {
-                if (chrome.runtime.lastError) {
-                    console.error("Runtime error:", chrome.runtime.lastError.message);
-                    displayResult({ success: false, message: "Error: Could not fetch data." });
-                } else {
-                    displayResult(response || { success: false, message: "No response from content script." });
-                }
-            });
-        }, 1000); // 2-second delay
+    const addAssignmentBtn = document.getElementById("addAssignmentBtn");
+    const assignmentForm = document.getElementById("assignmentForm");
+    const categorySelect = document.getElementById("categorySelect");
+    const assignmentSelect = document.getElementById("assignmentSelect"); 
+    const scoreEarned = document.getElementById("scoreEarned");
+    const scoreMax = document.getElementById("scoreMax");
+    const confirmAssignment = document.getElementById("confirmAssignment");
+    const editAssignmentBtn = document.getElementById("editAssignmentBtn");
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn");
+    const undoRemoveBtn = document.getElementById("undoRemoveBtn"); 
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); 
+
+    const undoIconImg = document.createElement('img');
+    undoIconImg.src = chrome.runtime.getURL("undoicon.png"); 
+    undoIconImg.alt = "Undo";
+    undoRemoveBtn.prepend(undoIconImg);
+
+
+    addAssignmentBtn.addEventListener("click", () => {
+        resetAssignmentForm(); 
+        isEditingExistingAssignment = false;
+        tempAeriesOriginalEarned = null;
+        tempAeriesOriginalMax = null;
+        tempAeriesAssignmentName = null;
+        lastRemovedOperation = null;    
+        document.getElementById("undoRemoveContainer").style.display = "none"; 
+        confirmAssignment.textContent = "Add Assignment";
+        assignmentSelect.style.display = "none"; 
+        moveFormBelow(addAssignmentBtn);
+        checkFormValidity();
     });
-});
 
-
-async function queryHuggingFace(prompt) {
-    try {
-        console.log("Attempting request to AI server...");
-        const response = await fetch('http://localhost:1700/ask', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
-        });
-
-        console.log("Response status:", response.status);
-        
-        if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log("Response data:", data);
-
-        // If the response still contains your instructions, try to extract just the answer
-        let cleanedResponse = data.response;
-        
-        // Simple parsing to extract just the answer if the response includes the original instructions
-        if (cleanedResponse.includes("Your overall grade is") || cleanedResponse.includes("grade is")) {
-            // Try to extract just the answer part
-            const answerMatch = cleanedResponse.match(/Your overall grade is \d+\.?\d*%|grade is \d+\.?\d*%/i);
-            if (answerMatch) {
-                cleanedResponse = answerMatch[0] + cleanedResponse.split(answerMatch[0])[1].split("Answer format:")[0];
-            }
+    editAssignmentBtn.addEventListener("click", () => {
+        resetAssignmentForm();
+        isEditingExistingAssignment = true;
+        lastRemovedOperation = null;
+        document.getElementById("undoRemoveContainer").style.display = "none"; 
+        confirmAssignment.textContent = "Update (Aeries) Assignment"; 
+        categorySelect.value = "";
+        assignmentSelect.innerHTML = '<option value="" disabled selected>Select category first</option>';
+        assignmentSelect.style.display = "block"; 
+        moveFormBelow(editAssignmentBtn);
+        checkFormValidity();
+    });
+// In DOMContentLoaded, after getting removeAssignmentBtn
+    removeAssignmentBtn.addEventListener("click", () => {
+        if (!isEditingExistingAssignment || tempAeriesOriginalEarned === null || tempAeriesAssignmentName === null) {
+            console.warn("[removeAssignmentBtn] Conditions not met for removal:",
+                "isEditingExistingAssignment:", isEditingExistingAssignment,
+                "tempAeriesOriginalEarned:", tempAeriesOriginalEarned,
+                "tempAeriesAssignmentName:", tempAeriesAssignmentName);
+            return;
         }
 
-        return cleanedResponse;
-    } catch (error) {
-        console.error("Error in AI request:", error);
-        return "Sorry, I encountered an error when trying to analyze your grades. Please try again.";
-    }
-}
-async function formatGradeQuestion(question, gradeData, overallGrade) {
-    return `Grade Data:
-${gradeData.map(category => 
-    `${category.category}: Weight ${category.weight}%, Current Points ${category.points}/${category.max}`
-).join('\n')}
-Overall calculated grade: ${overallGrade}%
+        const categoryIndex = parseInt(categorySelect.value);
+        const categoryName = currentGradeData[categoryIndex]?.category || "Unknown";
 
-Question: ${question}
+          lastRemovedOperation = {
+            id: crypto.randomUUID(),
+            name: tempAeriesAssignmentName,
+            categoryIndex,
+            categoryName,
+            originalEarned: tempAeriesOriginalEarned,
+            originalMax: tempAeriesOriginalMax,
+        };
+        // console.log("Stored for undo:", lastRemovedOperation);
 
-Important: Provide ONLY a short answer (maximum 3 sentences or 120 characters). Be direct and concise.`;
-}
+        const removalWhatIf = {
+            id: lastRemovedOperation.id,
+            categoryIndex,
+            categoryName,
+            name: tempAeriesAssignmentName,
+            earned: 0,
+            max: 0,
+            originalEarned: tempAeriesOriginalEarned,
+            originalMax: tempAeriesOriginalMax,
+            type: 'removed'
+        };
 
-async function askOllama() {
-    const questionInput = document.getElementById("aiQuestion");
-    const aiResponse = document.getElementById("aiResponse");
-    const question = questionInput.value.trim();
-    
-    if (!question) {
-        aiResponse.textContent = "Please enter a question.";
+        whatIfAssignments.push(removalWhatIf);
+
+        // Update UI
+        renderAssignmentsList(); // This will also manage undo button visibility
+        recalculateWhatIfGrade();
+        // document.getElementById("undoRemoveContainer").style.display = "block"; // Handled by renderAssignmentsList
+        assignmentForm.style.display = "none";
+        resetAssignmentForm(); // This also hides removeAssignmentBtn and undoRemoveContainer
+    });
+
+
+    undoRemoveBtn.addEventListener("click", () => {
+    if (!lastRemovedOperation) {
         return;
     }
 
-    try {
-        aiResponse.textContent = "Analyzing your grades";
-        
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-        const response = await chrome.tabs.sendMessage(tab.id, { action: "getGradeData" });
-        console.log("Grade data received by AI", response);
-        
-        if (!response?.gradeData || response.gradeData.length === 0) {
-            throw new Error("No grade data found. Please make sure you're on the gradebook page.");
-        }
+    const indexToRemove = whatIfAssignments.findIndex(
+        (op) => op.id === lastRemovedOperation.id && op.type === 'removed'
+    );
 
-        const formattedPrompt = await formatGradeQuestion(question, response.gradeData);
-        console.log("Sending prompt to Ollama:", formattedPrompt);
-        
-        const aiAnswer = await queryHuggingFace(formattedPrompt);
-        console.log("Ollama response:", aiAnswer);
-        
-        aiResponse.innerHTML = `<strong>Answer:</strong><br>${aiAnswer}`;
-
-    } catch (error) {
-        console.error('Error in askAI:', error);
-        aiResponse.textContent = `Error: ${error.message}. Please try again.`;
-    }
-}
-async function askAI() {
-    const questionInput = document.getElementById("aiQuestion");
-    const aiResponse = document.getElementById("aiResponse");
-    const question = questionInput.value.trim();
-    
-    if (!question) {
-        aiResponse.textContent = "Please enter a question.";
-        return;
+    if (indexToRemove > -1) {
+        whatIfAssignments.splice(indexToRemove, 1);
+    } else {
+        console.warn("Could not find the 'removed' operation to undo in whatIfAssignments.");
     }
 
-    try {
-        aiResponse.textContent = "Analyzing...";
-        
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    lastRemovedOperation = null;
+    undoRemoveContainer.style.display = "none";
 
-        // First get the grade calculation
-        const gradeResult = await chrome.tabs.sendMessage(tab.id, { action: "calculateGrade" });
-        if (!gradeResult?.success) {
-            throw new Error("Could not calculate overall grade.");
-        }
-        
-        // Then get the grade data
-        const dataResponse = await chrome.tabs.sendMessage(tab.id, { action: "getGradeData" });
-        if (!dataResponse?.gradeData || dataResponse.gradeData.length === 0) {
-            throw new Error("No grade data found. Please make sure you're on the gradebook page.");
+    renderAssignmentsList();
+    recalculateWhatIfGrade();
+    });
+
+    categorySelect.addEventListener("change", () => {
+        const selectedCategoryValue = categorySelect.value;
+        scoreEarned.value = ""; 
+        scoreMax.value = "";  
+        tempAeriesOriginalEarned = null;
+        tempAeriesOriginalMax = null; 
+
+        if (!selectedCategoryValue) {
+            assignmentSelect.style.display = "none";
+            assignmentSelect.innerHTML = '<option value="" disabled selected>Select category first</option>';
+            checkFormValidity();
+            return;
         }
 
-        const formattedPrompt = await formatGradeQuestion(
-            question, 
-            dataResponse.gradeData, 
-            gradeResult.grade // Pass the calculated overall grade
-        );
-        
-        const aiAnswer = await queryHuggingFace(formattedPrompt);
-        
-        // Ensure response is within limits (120 chars)
-        const limitedAnswer = aiAnswer.length > 120 
-            ? aiAnswer.substring(0, 117) + "..." 
-            : aiAnswer;
+        if (isEditingExistingAssignment) {
+            fetchAssignmentsForCategory(selectedCategoryValue); 
+        } else {
+            assignmentSelect.style.display = "none";
+        }
+        checkFormValidity();
+    });
+
+    scoreEarned.addEventListener("input", checkFormValidity);
+    scoreMax.addEventListener("input", checkFormValidity);
+
+    confirmAssignment.addEventListener("click", () => {
+        //console.log("[confirmAssignment] Clicked. Current data-edit-index:", confirmAssignment.getAttribute("data-edit-index"));
+        const categoryIndex = parseInt(categorySelect.value);
+        const earned = parseFloat(scoreEarned.value);
+        const max = parseFloat(scoreMax.value);
+
+        if (isNaN(categoryIndex) || !currentGradeData || !currentGradeData[categoryIndex]) {
+            console.error("Invalid category selected.");
+            return;
+        }
+        const categoryName = currentGradeData[categoryIndex].category;
+
+        const editIndexAttr = confirmAssignment.getAttribute("data-edit-index");
+        const editIndex = editIndexAttr ? parseInt(editIndexAttr) : -1;
+        //console.log("[confirmAssignment] Parsed editIndex:", editIndex, "whatIfAssignments length:", whatIfAssignments.length);
+
+        if (!isNaN(editIndex) && editIndex >= 0 && editIndex < whatIfAssignments.length) {
+            //console.log("[confirmAssignment] Updating existing what-if assignment at index:", editIndex);
+            const assignmentToUpdate = whatIfAssignments[editIndex];
+            //console.log("[confirmAssignment] Before update (what-if item):", JSON.parse(JSON.stringify(assignmentToUpdate)));
             
-        aiResponse.innerHTML = `<strong>Answer:</strong><br>${limitedAnswer}`;
+            assignmentToUpdate.categoryIndex = categoryIndex;
+            assignmentToUpdate.categoryName = categoryName;
+            assignmentToUpdate.earned = earned;
+            assignmentToUpdate.max = max;
 
-    } catch (error) {
-        console.error('Error in askAI:', error);
-        aiResponse.textContent = `Error: ${error.message}`;
-    }
-}
+            //console.log("[confirmAssignment] After update (what-if item):", JSON.parse(JSON.stringify(assignmentToUpdate)));
+            confirmAssignment.removeAttribute("data-edit-index");
+        } else {
+            //console.log("[confirmAssignment] Adding new what-if assignment.");
+            let oe = 0;
+            let om = 0;
+
+            if (isEditingExistingAssignment && tempAeriesOriginalEarned !== null && tempAeriesOriginalMax !== null) {
+                //console.log("[confirmAssignment] Using Aeries original scores for this 'what-if' item:", tempAeriesOriginalEarned, tempAeriesOriginalMax);
+                oe = tempAeriesOriginalEarned;
+                om = tempAeriesOriginalMax;
+            } else if (isEditingExistingAssignment) {
+                console.warn("[confirmAssignment] In Aeries edit mode, but tempAeriesOriginals are not set. Defaulting to 0/0 for originals.");
+            }
+
+            whatIfAssignments.push({
+                categoryIndex,
+                categoryName,
+                earned,
+                max,
+                originalEarned: oe,
+                originalMax: om
+            });
+        }
+        //console.log("[confirmAssignment] whatIfAssignments after operation:", JSON.parse(JSON.stringify(whatIfAssignments)));
+
+        renderAssignmentsList();
+        recalculateWhatIfGrade();
+        
+        const StoredIsEditingExistingAssignment = isEditingExistingAssignment; 
+        resetAssignmentForm(); 
+        assignmentForm.style.display = "none";
+        
+        isEditingExistingAssignment = false; 
+        tempAeriesOriginalEarned = null;  
+        tempAeriesOriginalMax = null;
+
+        if (StoredIsEditingExistingAssignment) {
+             document.getElementById("addAssignmentBtn").click();
+        } else if (addAssignmentBtn.style.display !== "none") { 
+            addAssignmentBtn.click(); 
+        }
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("✅ Popup DOM loaded!");
-
-    const askButton = document.getElementById("askAI");
-    
-    if (!askButton) {
-        console.error("❌ 'Ask AI' button NOT FOUND!");
-        return;
-    }
-
-    console.log("✅ 'Ask AI' button found!");
-
-    askButton.addEventListener("click", () => {
-        console.log("✅ 'Ask AI' button CLICKED!");
-        askAI();
     });
+    checkFormValidity();
 });
+
+//console.log("🟡 popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));

@@ -3,7 +3,6 @@
 <head>
   <title>Dhruv's Aeries Grade Calculator</title>
   <style>
-    /* Spinner container */
     .spinner {
       margin: 10px auto;
       width: 40px;
@@ -14,7 +13,6 @@
       animation: spin 1s linear infinite;
     }
 
-    /* Spin animation */
     @keyframes spin {
       from {
         transform: rotate(0deg);
@@ -32,11 +30,10 @@
     }
 
     
-    /* Popup window layout adjustments */
     body {
       font-family: Arial, sans-serif;
-      width: 350px; /* Width of the popup window */
-      height: 500px; /* Height of the popup window */
+      width: 350px; 
+      height: 500px;
       padding: 15px;
       display: flex;
       flex-direction: column;
@@ -44,7 +41,6 @@
     }
     
 
-    /* Header styles */
     h2 {
       color: darkgreen;
       margin-bottom: 5px;
@@ -55,7 +51,6 @@
       margin-bottom: 15px;
     }
 
-    /* Calculate button styling */
     #calculate {
       padding: 10px 20px;
       font-size: 16px;
@@ -70,169 +65,445 @@
     #calculate:hover {
       background-color: #45a049;
     }
-     /* Spacing between grades */
-     .grade-history div {
-        margin-bottom: 10px; /* Add spacing */
-        line-height: 1.5;   /* 1.5x line height */
+    
+    .grade-history div {
+      margin-bottom: 10px; 
+      line-height: 1.5;  
     }
 
-    /* Header for last 3 grades */
     .history-header {
-        font-size: 1.2em; /* Slightly larger */
-        color: purple;    /* Purple color */
-        font-weight: bold;
+      font-size: 1.2em; 
+      color: purple;   
+      font-weight: bold;
     }
 
-    /* Bold overall grades */
     .overall-grade {
-        font-weight: bold;
+      font-weight: bold;
     }
 
-    /* Grade change text (default color for no change is gray) */
     .grade-change {
-        margin-left: 5px;
+      margin-left: 5px;
     }
-    /* Result message styles */
+    
     #result {
       margin-top: 15px;
+      margin-bottom: 20px; 
       text-align: center;
+      position: relative;
     }
 
-    /* Style for "Subject Grade is" and the grade percentage */
     .grade-label {
       font-size: 1.1em;
-      color: #004080; /* Darker color for visibility */
-      margin-top: 10px;
+      color: #004080;
+      margin-bottom: 5px;
     }
 
     .grade-value {
-      font-size: 2em; /* Much larger font size */
-      color: #004080; /* Darker color for emphasis */
+      font-size: 2em; 
+      color: #004080; 
       font-weight: bold;
+      display: inline-block;
     }
-    
 
-    /* Footer styling for author credit */
+
+      
+      
+    .calculate-icon {
+      cursor: pointer;
+      height: 32px; 
+      width: 32px;   
+      margin-left: 15px;  
+      display: none;
+      vertical-align: middle;
+      position: absolute;  
+      right: 10px;        
+      top: 50%;            
+      transform: translateY(-50%); 
+   }
+
+    .grade-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
     .footer {
       font-size: 0.9em;
       color: black;
       text-align: right;
       margin-top: 20px;
     }
-  </style>
+    
+    .reset-button {
+      padding: 6px 12px; 
+      font-size: 12px;
+      background: linear-gradient(135deg, #ff7f50, #ff4500);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease-in-out;
+      margin-top: 10px;
+      width: 100px; 
+      text-align: center;
+    }
+
+    .reset-button:hover {
+      background: linear-gradient(135deg, #ff4500, #ff7f50);
+    }
+
+    #resetHistoryContainer {
+      position: relative;
+      text-align: right;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      display: none;
+    }
+
+
+    
+    .whatif-section {
+        display: none;
+        margin-top: 10px;
+        padding: 15px 15px 15px 15px;
+        border-top: 3px solid #ddd;
+        position: relative;
+        top: 10px;
+    }
+
+    .whatif-header {
+      font-size: 16px;
+      color: #2196F3;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    
+    .whatif-grade {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    
+    .whatif-grade-value {
+      font-size: 1.8em;
+      color: #004080;
+      font-weight: bold;
+    }
+    
+    .whatif-grade-label {
+      font-size: 0.9em;
+      color: #555;
+    }
+
+    
+    .add-assignment-btn {
+      background-color: #32a86d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      width: fit-content;
+    }
+    
+    .add-assignment-btn i {
+      margin-left: 5px;
+      font-size: 16px;
+    }
+    
+    .add-assignment-btn:disabled {
+      background-color: #a0a0a0;
+      cursor: not-allowed;
+    }
+    
+    .add-assignment-form {
+        margin-top: 10px;
+        display: none;
+        position: relative;
+        top: 0;
+    }
+      
+    .category-select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    .score-input {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    .remove-assignment-btn {
+      background-color: #e03f39; 
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-left: auto; 
+      transition: background-color 0.2s;
+    }
+
+.remove-assignment-btn:hover {
+  background-color: #ca221c; 
+}
+    
+    .score-input input {
+      width: 60px;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    
+    .score-input span {
+      margin: 0 8px;
+    }
+    
+    .confirm-btn {
+      background-color: #f5e942;
+      color: black;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      opacity: 0.5;
+    }
+    
+    .confirm-btn:enabled {
+      opacity: 1;
+    }
+    
+    .plus-icon {
+      background-color: white;
+      color: #32a86d;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 5px;
+      font-weight: bold;
+    }
+    .assignments-container {
+      margin-top: 20px;
+      border-top: 1px dashed #ddd;
+      padding-top: 10px;
+    }
+
+    .assignments-header {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    .assignments-list {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 5px;
+      padding: 5px;
+    }
+
+    .no-assignments {
+      color: #999;
+      text-align: center;
+      font-style: italic;
+      padding: 10px;
+    }
+
+    .assignment-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    
+
+    .assignment-item:last-child {
+      border-bottom: none;
+    }
+
+    .assignment-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .assignment-category {
+      font-weight: bold;
+      color: #2196F3;
+    }
+
+    .assignment-score {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .assignment-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .edit-btn, .delete-btn {
+      padding: 3px 8px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .edit-btn {
+      background-color: #060692;
+      color: rgb(255, 255, 255);
+    }
+    .undo-remove-btn {
+      background-color: #5bc0de; /* A nice blue, can be adjusted */
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: inline-flex; /* To align icon and text */
+      align-items: center;
+    }
+
+    .undo-remove-btn:hover {
+      background-color: #31b0d5; /* Darker blue for hover */
+    }
+
+    .undo-remove-btn img {
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+
+    .delete-btn {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image: url('trashcan.png'); 
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: transparent; 
+    }
+
+    .delete-btn:hover {
+        opacity: 0.8;
+    }
+
+    .edit-btn:hover {
+      background-color: #02033b;
+    }
+
+    .delete-btn:hover {
+      background-color: #ff3333;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+
+
+</style>
 </head>
 <body>
-  <h2>Aeries Overall Grade Calculator</h2>
-  <h4>Go to the subject's <u>gradebook details</u> page and click the button to calculate!</h4>
+  <h2>Aeries Grade Calculator</h2>
+  <h4>Go to the subject's <u>gradebook details</u> page and click the button to fetch grades!</h4>
 
   <button id="calculate">Calculate Grade</button>
 
-  <!-- Result section for displaying grade and messages -->
   <div id="result">
-    <!-- This area will be updated by JavaScript with the result -->
   </div>
   <div id="loader" style="display: none;">
     <div class="spinner"></div>
     <p>Calculating...</p>
   </div>
-  <!-- History section for past grades -->
   <div id="history" class="grade-history">
-    <!-- This area will be updated by JavaScript with past grades -->
   </div>
 
-  <!-- Reset History button container -->
-  <div id="resetHistoryContainer" style="display: none;">
+  <div id="resetHistoryContainer">
     <button id="resetHistory" class="reset-button">Reset History</button>
   </div>
 
-  <!-- Footer with author credit -->
-  <div class="footer">Extension made by Dhruv!!</div>
+
+  <div id="whatifSection" class="whatif-section">
+    <div class="whatif-header">What-If Mode</div>
+    
+    <div class="whatif-grade">
+      <div class="whatif-grade-value" id="whatifGradeValue">--.--%</div>
+      <div class="whatif-grade-label">What-If Grade</div>
+    </div>
+    
+    <button id="addAssignmentBtn" class="add-assignment-btn">
+      Add Assignment <span class="plus-icon">+</span>
+    </button>
+    <button id="editAssignmentBtn" class="add-assignment-btn" style="background-color: #36cef7; margin-top: 10px;">
+      Edit Existing Assignment 
+    </button>
+    
+    
+    <div id="assignmentForm" class="add-assignment-form">
+      <select id="categorySelect" class="category-select">
+        <option value="" disabled selected>Select Category</option>
+      </select>
+      <select id="assignmentSelect" class="category-select" style="display: none; margin-top: 10px;">
+        <option disabled selected>Select Assignment</option>
+      </select>
+
+      
+      <div class="score-input">
+        <input type="number" id="scoreEarned" placeholder="0" min="0">
+        <span>of</span>
+        <input type="number" id="scoreMax" placeholder="0" min="0">
+        <span>points</span>
+        <button id="removeAssignmentBtn" class="remove-assignment-btn" style="display: none;">REMOVE ASSIGNMENT</button>
+      </div>
+      <button id="confirmAssignment" class="confirm-btn" disabled>Input Assignment</button>
+    </div>
+  <div class="assignments-container">
+    <h4 class="assignments-header">Added Assignments</h4>
+    <div id="assignmentsList" class="assignments-list">
+      <p class="no-assignments">No assignments added yet</p>
+      <div id="undoRemoveContainer" style="text-align: center; margin-top: 10px; display: none;">
+        <button id="undoRemoveBtn" class="undo-remove-btn">
+          <img src="undoicon.png" alt="Undo" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;">
+          Undo Remove
+        </button>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+  </div>
+
+  <div class="footer">Extension made by Dhruv :<span>&#x29;</span></div>
 
   <script src="popup.js"></script>
-  <div class="ai-section">
-    <div class="ai-header">Ask AI About Your Grades</div>
-    <input 
-        type="text" 
-        id="aiQuestion" 
-        placeholder="Enter question here" 
-        class="ai-input">
-        <button id="askAI" class="ai-button">Ask AI</button>
-        <div id="aiResponse" class="ai-response"></div>
-</div>
-
-<style>
-.ai-section {
-    margin-top: 20px;
-    padding: 15px;
-    border-top: 1px solid #ddd;
-}
-
-.ai-header {
-    font-size: 16px;
-    color: #2196F3;
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
-.ai-input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-}
-/* Style for the Reset History button */
-.reset-button {
-    padding: 6px 12px; /* Smaller padding */
-    font-size: 12px; /* Smaller font size */
-    background: linear-gradient(135deg, #ff7f50, #ff4500);
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s ease-in-out;
-    margin-top: 10px;
-    width: 100px; /* Fixed width */
-    text-align: center;
-}
-
-.reset-button:hover {
-    background: linear-gradient(135deg, #ff4500, #ff7f50);
-}
-
-/* Position the Reset History button at the bottom right */
-#resetHistoryContainer {
-    position: absolute;
-    bottom: 10px;
-    right: 15px;
-}
-
-
-.ai-button {
-    padding: 8px 16px;
-    background-color: #2196F3;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s;
-}
-
-.ai-button:hover {
-    background-color: #1976D2;
-}
-
-.ai-response {
-    margin-top: 15px;
-    padding: 12px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
-    font-size: 14px;
-    line-height: 1.4;
-    min-height: 20px;
-}
-</style>
 </body>
 </html>
