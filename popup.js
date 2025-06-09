@@ -1,5 +1,3 @@
-// popup.js
-
 
 function renderAssignmentsList() {
     const assignmentsList = document.getElementById("assignmentsList");
@@ -18,13 +16,15 @@ function renderAssignmentsList() {
         assignmentItem.className = "assignment-item";
 
         if (assignment.type === 'removed') {
+            // Add the "Undo" button here
             assignmentItem.innerHTML = `
                 <div class="assignment-info">
                     <span class="assignment-category">${assignment.categoryName}</span>
                     <span class="assignment-score" style="color: #c9302c;">${assignment.name} <strong>[REMOVED]</strong></span>
                 </div>
                 <div class="assignment-actions">
-                    </div>
+                    <button class="undo-btn" data-index="${index}">Undo</button>
+                </div>
             `;
         } else {
             assignmentItem.innerHTML = `
@@ -54,7 +54,16 @@ function renderAssignmentsList() {
             deleteAssignment(index);
         });
     });
+
+    // Add an event listener for the new "Undo" buttons
+    document.querySelectorAll(".undo-btn").forEach(button => {
+        button.addEventListener("click", function() {
+            const index = parseInt(this.getAttribute("data-index"));
+            undoRemoveAssignment(index);
+        });
+    });
 }
+
 
 function saveGrade(grade, teacher) {
     return new Promise((resolve) => {
@@ -494,6 +503,14 @@ function editAssignment(index) {
 function deleteAssignment(index) {
     //console.log(`[deleteAssignment] Deleting assignment at index ${index}`);
     whatIfAssignments.splice(index, 1);
+    renderAssignmentsList();
+    recalculateWhatIfGrade();
+}
+function undoRemoveAssignment(index) {
+    // This simply removes the 'removed' placeholder from the whatIfAssignments array
+    whatIfAssignments.splice(index, 1);
+    
+    // Then, re-render the list and update the grade
     renderAssignmentsList();
     recalculateWhatIfGrade();
 }
