@@ -3,6 +3,11 @@
 
 function renderAssignmentsList() {
     const assignmentsList = document.getElementById("assignmentsList");
+<<<<<<< HEAD
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); // Get the container
+
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
 
     if (!assignmentsList) return;
 
@@ -12,7 +17,15 @@ function renderAssignmentsList() {
         assignmentsList.innerHTML = '<p class="no-assignments">No assignments added yet.</p>';
         return;
     }
+<<<<<<< HEAD
+    if (lastRemovedOperation) {
+        undoRemoveContainer.style.display = "block";
+    } else {
+        undoRemoveContainer.style.display = "none";
+    }
+=======
 
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
     whatIfAssignments.forEach((assignment, index) => {
         const assignmentItem = document.createElement("div");
         assignmentItem.className = "assignment-item";
@@ -128,7 +141,13 @@ function resetAssignmentForm() {
     const scoreEarned = document.getElementById("scoreEarned");
     const scoreMax = document.getElementById("scoreMax");
     const confirmAssignment = document.getElementById("confirmAssignment");
+<<<<<<< HEAD
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn"); 
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); 
+
+=======
     const removeAssignmentBtn = document.getElementById("removeAssignmentBtn"); // ADD THIS
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
 
     categorySelect.value = "";
     scoreEarned.value = "";
@@ -136,8 +155,14 @@ function resetAssignmentForm() {
     confirmAssignment.disabled = true;
     assignmentSelect.innerHTML = '<option value="" disabled selected>Select Assignment</option>';
     assignmentSelect.style.display = "none";
+<<<<<<< HEAD
+    removeAssignmentBtn.style.display = "none";
+    undoRemoveContainer.style.display = "none"; 
+    if(undoRemoveContainer) undoRemoveContainer.style.display = "none"; 
+=======
     removeAssignmentBtn.style.display = "none"; // ADD THIS LINE to hide the button
 
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
     if (confirmAssignment.hasAttribute("data-edit-index")) {
         confirmAssignment.removeAttribute("data-edit-index");
     }
@@ -163,6 +188,10 @@ function animateGradeChange(element, startValue, endValue) {
 // global vars
 let currentGradeData = null;
 let currentTeacher = null;
+<<<<<<< HEAD
+let lastRemovedOperation = null;
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
 let tempAeriesOriginalEarned = null;
 let tempAeriesOriginalMax = null;
 let tempAeriesAssignmentName = null;
@@ -231,11 +260,19 @@ function resetGradeHistory(teacher) {
 
 function toggleWhatIfMode() {
     const whatifSection = document.getElementById("whatifSection");
+<<<<<<< HEAD
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); 
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
     if (whatifSection.style.display === "block") {
         whatifSection.style.display = "none";
         whatIfAssignments = []; 
         document.getElementById("assignmentForm").style.display = "none"; 
         resetAssignmentForm();
+<<<<<<< HEAD
+        lastRemovedOperation = null; 
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
     } else {
         whatifSection.style.display = "block";
         fetchGradeDataForDropdown(); 
@@ -279,7 +316,10 @@ function populateCategoryDropdown(gradeData) {
     } else {
         categorySelect.innerHTML = '<option value="" disabled selected>No categories available</option>';
     }
+<<<<<<< HEAD
+=======
     //console.log("Category dropdown populated with", categorySelect.options.length -1 , "categories");
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
 }
 
 
@@ -321,6 +361,13 @@ function showAssignmentSelector(assignments) {
             tempAeriesOriginalMax = parseFloat(selectedAssignment.max);
             tempAeriesAssignmentName = selectedAssignment.name; 
             removeAssignmentBtn.style.display = "block";
+<<<<<<< HEAD
+            lastRemovedOperation = null;
+            document.getElementById("undoRemoveContainer").style.display = "none";
+        } else { 
+            removeAssignmentBtn.style.display = "none";
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
         }
         checkFormValidity();
     };
@@ -553,12 +600,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmAssignment = document.getElementById("confirmAssignment");
     const editAssignmentBtn = document.getElementById("editAssignmentBtn");
     const removeAssignmentBtn = document.getElementById("removeAssignmentBtn");
+<<<<<<< HEAD
+    const undoRemoveBtn = document.getElementById("undoRemoveBtn"); 
+    const undoRemoveContainer = document.getElementById("undoRemoveContainer"); 
+
+    const undoIconImg = document.createElement('img');
+    undoIconImg.src = chrome.runtime.getURL("undoicon.png"); 
+    undoIconImg.alt = "Undo";
+    undoRemoveBtn.prepend(undoIconImg);
+
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
 
     addAssignmentBtn.addEventListener("click", () => {
         resetAssignmentForm(); 
         isEditingExistingAssignment = false;
         tempAeriesOriginalEarned = null;
         tempAeriesOriginalMax = null;
+<<<<<<< HEAD
+        tempAeriesAssignmentName = null;
+        lastRemovedOperation = null;    
+        document.getElementById("undoRemoveContainer").style.display = "none"; 
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
         confirmAssignment.textContent = "Add Assignment";
         assignmentSelect.style.display = "none"; 
         moveFormBelow(addAssignmentBtn);
@@ -568,6 +632,11 @@ document.addEventListener('DOMContentLoaded', () => {
     editAssignmentBtn.addEventListener("click", () => {
         resetAssignmentForm();
         isEditingExistingAssignment = true;
+<<<<<<< HEAD
+        lastRemovedOperation = null;
+        document.getElementById("undoRemoveContainer").style.display = "none"; 
+=======
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
         confirmAssignment.textContent = "Update (Aeries) Assignment"; 
         categorySelect.value = "";
         assignmentSelect.innerHTML = '<option value="" disabled selected>Select category first</option>';
@@ -575,6 +644,74 @@ document.addEventListener('DOMContentLoaded', () => {
         moveFormBelow(editAssignmentBtn);
         checkFormValidity();
     });
+<<<<<<< HEAD
+// In DOMContentLoaded, after getting removeAssignmentBtn
+    removeAssignmentBtn.addEventListener("click", () => {
+        if (!isEditingExistingAssignment || tempAeriesOriginalEarned === null || tempAeriesAssignmentName === null) {
+            console.warn("[removeAssignmentBtn] Conditions not met for removal:",
+                "isEditingExistingAssignment:", isEditingExistingAssignment,
+                "tempAeriesOriginalEarned:", tempAeriesOriginalEarned,
+                "tempAeriesAssignmentName:", tempAeriesAssignmentName);
+            return;
+        }
+
+        const categoryIndex = parseInt(categorySelect.value);
+        const categoryName = currentGradeData[categoryIndex]?.category || "Unknown";
+
+          lastRemovedOperation = {
+            id: crypto.randomUUID(),
+            name: tempAeriesAssignmentName,
+            categoryIndex,
+            categoryName,
+            originalEarned: tempAeriesOriginalEarned,
+            originalMax: tempAeriesOriginalMax,
+        };
+        // console.log("Stored for undo:", lastRemovedOperation);
+
+        const removalWhatIf = {
+            id: lastRemovedOperation.id,
+            categoryIndex,
+            categoryName,
+            name: tempAeriesAssignmentName,
+            earned: 0,
+            max: 0,
+            originalEarned: tempAeriesOriginalEarned,
+            originalMax: tempAeriesOriginalMax,
+            type: 'removed'
+        };
+
+        whatIfAssignments.push(removalWhatIf);
+
+        // Update UI
+        renderAssignmentsList(); // This will also manage undo button visibility
+        recalculateWhatIfGrade();
+        // document.getElementById("undoRemoveContainer").style.display = "block"; // Handled by renderAssignmentsList
+        assignmentForm.style.display = "none";
+        resetAssignmentForm(); // This also hides removeAssignmentBtn and undoRemoveContainer
+    });
+
+
+    undoRemoveBtn.addEventListener("click", () => {
+    if (!lastRemovedOperation) {
+        return;
+    }
+
+    const indexToRemove = whatIfAssignments.findIndex(
+        (op) => op.id === lastRemovedOperation.id && op.type === 'removed'
+    );
+
+    if (indexToRemove > -1) {
+        whatIfAssignments.splice(indexToRemove, 1);
+    } else {
+        console.warn("Could not find the 'removed' operation to undo in whatIfAssignments.");
+    }
+
+    lastRemovedOperation = null;
+    undoRemoveContainer.style.display = "none";
+
+    renderAssignmentsList();
+    recalculateWhatIfGrade();
+=======
     removeAssignmentBtn.addEventListener("click", () => {
     if (!isEditingExistingAssignment || tempAeriesOriginalEarned === null) {
         console.error("Remove button clicked, but no Aeries assignment data is stored.");
@@ -600,6 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recalculateWhatIfGrade();
     assignmentForm.style.display = "none";
     resetAssignmentForm();
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
     });
 
     categorySelect.addEventListener("change", () => {
@@ -701,4 +839,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkFormValidity();
 });
 
+<<<<<<< HEAD
 //console.log("🟡 popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));
+=======
+//console.log("🟡 popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));
+>>>>>>> fa2787a77fff5f22002b5b908e9d133e9f81c5d5
