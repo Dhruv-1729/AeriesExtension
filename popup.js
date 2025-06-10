@@ -510,10 +510,7 @@ function deleteAssignment(index) {
 }
 
 function undoRemoveAssignment(index) {
-    // This simply removes the 'removed' placeholder from the whatIfAssignments array
     whatIfAssignments.splice(index, 1);
-    
-    // Then, re-render the list and update the grade
     renderAssignmentsList();
     recalculateWhatIfGrade();
 }
@@ -524,7 +521,7 @@ function moveFormBelow(buttonElement) {
         buttonElement.insertAdjacentElement("afterend", form);
         form.style.display = "block"; 
     } else {
-        console.warn("Could not move form, buttonElement or form not found", buttonElement, form);
+        //console.warn("Could not move form, buttonElement or form not found", buttonElement, form);
     }
 }
 
@@ -721,4 +718,4 @@ document.addEventListener('DOMContentLoaded', () => {
     checkFormValidity();
 });
 
-//console.log("🟡 popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));
+//console.log(" popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));
