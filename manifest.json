@@ -1,5 +1,5 @@
 {
- "manifest_version": 3,
+  "manifest_version": 3,
   "name": "Aeries Grade Calculator",
   "version": "7.1",
   "description": "Aeries Gradebook extension for what-if grade calculation",
