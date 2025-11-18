@@ -1,11 +1,18 @@
 {
+  "update_url": "https://clients2.google.com/service/update2/crx",
+
   "manifest_version": 3,
   "name": "Aeries Grade Calculator",
   "version": "7.1",
   "description": "Aeries Gradebook extension for what-if grade calculation",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["http://localhost:1700/*"],
-  
+  "permissions": ["activeTab", "storage"],
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "aeries-grade-calculator@example.com"
+    }
+  },
+
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -15,7 +22,7 @@
       "128": "icon128.png"
     }
   },
-  
+
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
