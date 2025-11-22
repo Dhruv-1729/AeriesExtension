@@ -1,6 +1,6 @@
 <div align="center">
 
-  ## Dhruv's Aeries Grade Checker Extension 
+  ## Dhruv's Aeries Grade Calculator Extension 
   *Last Updated: 11/17/2025*
 
 **Works with *Aeries* ONLY**
