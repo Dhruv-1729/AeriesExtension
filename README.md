@@ -1,14 +1,16 @@
 <div align="center">
 
   ## Dhruv's Aeries Grade Checker Extension 
-  *Last Updated: 06/09/2025*
+  *Last Updated: 11/17/2025*
 
 **Works with *Aeries* ONLY**
 </div>
 
-## Installation
+| <img src="https://github.com/user-attachments/assets/5463ef88-873b-4516-8514-5277664cfde7" alt="Get this extension on the Chrome Web Store"> | <a href="[https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm](https://chromewebstore.google.com/detail/aeries-grade-calculator/dmambbnjadglkainpnjfidolknpdoljm">Chrome Web Store</a> | 
 
-1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v7.1-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.1)
+## Installation (Manual)
+
+1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v7.2-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.2)
    
 2. Go into your files and double-click the .zip file you just downloaded. It should create a folder
    
@@ -21,4 +23,4 @@
 
 
 ## Usage
-Go to your Aeries *gradebook* page to test it out. Follow the directions on the extension when you click it. 
+Go to your Aeries *gradebook* page to test it out. Follow the directions on the extension when you click it. The calculator button to the right on the extension popup enables what-if mode.
