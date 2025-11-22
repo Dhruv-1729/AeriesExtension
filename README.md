@@ -6,7 +6,7 @@
 **Works with *Aeries* ONLY**
 </div>
 
-| Browser | Install from ... | Status |
+| Browser | Install platform| Status |
 | :---: | :--- | :--- |
 | <img src="https://raw.githubusercontent.com/alrra/browser-logos/main/src/firefox/firefox_48x48.png" width="48" alt="Firefox"> | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/aeries-grade-calculator/) | Stable |
 | <img src="https://raw.githubusercontent.com/alrra/browser-logos/main/src/chrome/chrome_48x48.png" width="48" alt="Chrome"> | [Chrome Web Store](https://chromewebstore.google.com/detail/aeries-grade-calculator/dmambbnjadglkainpnjfidolknpdoljm) | Stable |
