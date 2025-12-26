@@ -53,14 +53,17 @@ function getAssignmentsFromPage(categoryName) {
         let max = null;
         let name = "Unnamed Assignment";
         let foundCategory = false;
+        let dueDate = null;
 
-        // extract score
-        for (let line of lines) {
-            const match = line.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
-            if (match) {
-                points = parseFloat(match[1]);
-                max = parseFloat(match[2]);
-                break;
+        const scoreLabelIndex = lines.findIndex(line => line === "Score");
+        if (scoreLabelIndex !== -1 && scoreLabelIndex + 1 < lines.length) {
+            const scoreLine = lines[scoreLabelIndex + 1];
+            if (scoreLine && scoreLine.trim() !== "" && !/^\s*\/\s*/.test(scoreLine)) {
+                const match = scoreLine.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+                if (match) {
+                    points = parseFloat(match[1]);
+                    max = parseFloat(match[2]);
+                }
             }
         }
 
@@ -70,18 +73,48 @@ function getAssignmentsFromPage(categoryName) {
             name = titleLine.replace(/^\d+\s*-\s*/, "").trim();
         }
 
+        const dueDateLineIndex = lines.findIndex(line => line.includes("Due Date:"));
+        if (dueDateLineIndex !== -1) {
+            const dueDateLine = lines[dueDateLineIndex];
+            let dateMatch = dueDateLine.match(/Due Date:\s*(\d{1,2}\/\d{1,2}\/\d{4})(?:\s|$)/);
+            if (dateMatch) {
+                dueDate = dateMatch[1];
+            } else if (dueDateLineIndex + 1 < lines.length) {
+                const nextLine = lines[dueDateLineIndex + 1];
+                const datePatternMatch = nextLine.match(/^(\d{1,2}\/\d{1,2}\/\d{4})(?:\s|$)/);
+                if (datePatternMatch) {
+                    dueDate = datePatternMatch[1];
+                }
+            }
+        }
+
         foundCategory = lines.some(line => normalize(line) === normalize(categoryName));
 
-        if (foundCategory && points !== null && max !== null) {
-            assignments.push({
+        if (foundCategory && points !== null && max !== null && !isNaN(points) && !isNaN(max)) {
+            const assignmentData = {
                 name,
                 points,
-                max
-            });
+                max,
+                dueDate: dueDate || null
+            };
+            assignments.push(assignmentData);
+
+            if (dueDate) {
+                // console.log(`[Aeries Grade Calc] Extracted assignment: "${name}" - Due Date: ${dueDate}`);
+            } else {
+                // console.log(`[Aeries Grade Calc] Extracted assignment: "${name}" - Due Date: Not found`);
+            }
         }
     });
 
-    //console.log(`Found ${assignments.length} assignments in category '${categoryName}'`);
+    // console.log(`[Aeries Grade Calc] Category "${categoryName}": Found ${assignments.length} assignments`);
+    if (assignments.length > 0) {
+        assignments.forEach((assignment, index) => {
+            const dateInfo = assignment.dueDate ? `Due: ${assignment.dueDate}` : 'No due date';
+            // console.log(`[Aeries Grade Calc]   ${index + 1}. "${assignment.name}" (${assignment.points}/${assignment.max} points) - ${dateInfo}`);
+        });
+    }
+
     return assignments;
 }
 
@@ -95,70 +128,67 @@ function calculateGrade() {
 
     const firstRow = rows[0];
     const cells = firstRow.querySelectorAll("td");
-    const hasPercOfGrade = cells.length >= 6; 
+    const hasPercOfGrade = cells.length >= 6;
     let totalPoints = 0;
     let totalMax = 0;
     let weightedSum = 0;
     let totalWeight = 0;
     let validRowCount = 0;
 
-    
+
     rows.forEach((row, index) => {
         const cells = row.querySelectorAll("td");
         //console.log(`Row ${index} has ${cells.length} cells`);
-        
+
         if (cells.length >= (hasPercOfGrade ? 6 : 5)) {
             const categoryName = cells[0]?.innerText.trim();
-            const weightText = hasPercOfGrade ? cells[1]?.innerText.trim() : "100"; 
-            const pointsText = hasPercOfGrade ? cells[2]?.innerText.trim() : cells[1]?.innerText.trim(); 
-            const maxText = hasPercOfGrade ? cells[3]?.innerText.trim() : cells[2]?.innerText.trim(); 
+            const weightText = hasPercOfGrade ? cells[1]?.innerText.trim() : "100";
+            const pointsText = hasPercOfGrade ? cells[2]?.innerText.trim() : cells[1]?.innerText.trim();
+            const maxText = hasPercOfGrade ? cells[3]?.innerText.trim() : cells[2]?.innerText.trim();
             const percentageText = hasPercOfGrade ? cells[4]?.innerText.trim() : cells[3]?.innerText.trim();
-            
-            
-            // Skip the "Total" row
+
+
             if (categoryName.toLowerCase() === "total") {
                 return;
             }
-            
-            // Parse the numbers, handling percentage signs
+
             const weight = parseFloat(weightText.replace(/[^0-9.]/g, ""));
             const points = parseFloat(pointsText.replace(/[^0-9.]/g, ""));
             const max = parseFloat(maxText.replace(/[^0-9.]/g, ""));
             const percentage = parseFloat(percentageText.replace(/[^0-9.]/g, ""));
-            
+
             //console.log(`Parsed values: Weight = ${weight}, Points = ${points}, Max = ${max}, Percentage = ${percentage}`);
-            
-            // Skip if both points and max are 0
+
             if (points === 0 && max === 0) {
                 //console.log(`Skipping ${categoryName} because points and max are both 0`);
                 return;
             }
-            
+
             if (isNaN(points) || isNaN(max)) {
                 //console.log(`Row ${index} skipped: invalid numbers after parsing: Points: ${points}, Max: ${max}`);
                 return;
             }
-            
+
             if (hasPercOfGrade) {
                 if (isNaN(weight) || isNaN(percentage)) {
                     //console.log(`Row ${index} skipped: invalid numbers after parsing: Weight: ${weight}, Percentage: ${percentage}`);
                     return;
                 }
-                
+
                 const weightedContribution = (weight / 100) * percentage;
                 weightedSum += weightedContribution;
                 totalWeight += (weight / 100);
-                
+
                 //console.log(`Category ${categoryName} contributes ${weightedContribution.toFixed(2)} weighted points out of ${max}`);
             } else {
                 totalPoints += points;
                 totalMax += max;
-                
+
                 //console.log(`Category ${categoryName} contributes ${points} points out of ${max}`);
             }
-            
+
             validRowCount++;
-            
+
             //console.log(`Running totals: ${hasPercOfGrade ? `weightedSum = ${weightedSum.toFixed(2)}, totalWeight = ${totalWeight.toFixed(2)}` : `totalPoints = ${totalPoints.toFixed(2)}, totalMax = ${totalMax.toFixed(2)}`}`);
         }
     });
@@ -170,7 +200,7 @@ function calculateGrade() {
 
     //calculate the final grade
     const finalGrade = hasPercOfGrade ? (weightedSum / totalWeight) : (totalPoints / totalMax) * 100;
-    
+
     //console.log(`Final calculation: ${hasPercOfGrade ? `${weightedSum.toFixed(2)} / ${totalWeight.toFixed(2)}` : `${totalPoints.toFixed(2)} / ${totalMax.toFixed(2)}`} = ${finalGrade.toFixed(2)}%`);
 
     if (isNaN(finalGrade)) {
@@ -190,7 +220,7 @@ function calculateGrade() {
 function getGradeTableData() {
     const table = [];
     const rows = Array.from(document.querySelectorAll("tr[id^='ctl00_MainContent_subGBS_DataSummary_']"))
-                     .filter(row => !row.querySelector("td:first-child")?.innerText.toLowerCase().includes("total"));
+        .filter(row => !row.querySelector("td:first-child")?.innerText.toLowerCase().includes("total"));
 
     //console.log("Number of rows found for dropdown:", rows.length);
 
@@ -198,22 +228,22 @@ function getGradeTableData() {
         try {
             const cells = row.querySelectorAll("td");
             //console.log(`Dropdown Row ${index} has ${cells.length} cells`);
-            
-            if (cells.length >= 4) { // Make sure we have enough cells to get all data
+
+            if (cells.length >= 4) {
                 const categoryName = cells[0].innerText.trim();
-                
+
                 const hasPercOfGrade = cells.length >= 6;
-                
+
                 const weightText = hasPercOfGrade ? cells[1]?.innerText.trim() : "100";
                 const pointsText = hasPercOfGrade ? cells[2]?.innerText.trim() : cells[1]?.innerText.trim();
                 const maxText = hasPercOfGrade ? cells[3]?.innerText.trim() : cells[2]?.innerText.trim();
-                
+
                 const weight = parseFloat(weightText.replace(/[^0-9.]/g, ""));
                 const points = parseFloat(pointsText.replace(/[^0-9.]/g, ""));
                 const max = parseFloat(maxText.replace(/[^0-9.]/g, ""));
-                
+
                 //console.log(`Dropdown Category found: "${categoryName}" with weight=${weight}, points=${points}, max=${max}`);
-                
+
                 table.push({
                     category: categoryName,
                     weight: isNaN(weight) ? 100 : weight,
@@ -227,7 +257,7 @@ function getGradeTableData() {
             console.error(`Error processing dropdown row ${index}:`, error);
         }
     });
-    
+
     //console.log("Returning dropdown data:", table);
     return table;
 }

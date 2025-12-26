@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <title>Dhruv's Aeries Grade Calculator</title>
+  <title>Aeries Grade Calculator</title>
   <style>
     .spinner {
       margin: 10px auto;
@@ -17,6 +18,7 @@
       from {
         transform: rotate(0deg);
       }
+
       to {
         transform: rotate(360deg);
       }
@@ -29,17 +31,57 @@
       margin-top: 10px;
     }
 
-    
+
     body {
       font-family: Arial, sans-serif;
-      width: 350px; 
+      width: 350px;
       height: 500px;
       padding: 15px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      background: white;
     }
-    
+
+    /* When showing compact error, switch to small size and teal background */
+    body.show-compact {
+      width: 300px;
+      height: auto;
+      min-height: 180px;
+      padding: 0;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #b2ebf2 0%, #80deea 50%, #4dd0e1 100%);
+    }
+
+    body.show-compact #compactRefreshBtn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      background-color: #f5f5f5;
+    }
+
+    /* Show main content by default, hide compact view */
+    .compact-error-view {
+      display: none;
+    }
+
+    /* When in compact mode, show compact view and hide main content */
+    body.show-compact .compact-error-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 25px;
+      text-align: center;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    body.show-compact .main-content,
+    body.show-compact .footer {
+      display: none !important;
+    }
+
 
     h2 {
       color: darkgreen;
@@ -60,20 +102,22 @@
       border-radius: 5px;
       cursor: pointer;
       transition: background-color 0.3s;
+      display: block;
+      margin: 0 auto;
     }
 
     #calculate:hover {
       background-color: #45a049;
     }
-    
+
     .grade-history div {
-      margin-bottom: 10px; 
-      line-height: 1.5;  
+      margin-bottom: 10px;
+      line-height: 1.5;
     }
 
     .history-header {
-      font-size: 1.2em; 
-      color: purple;   
+      font-size: 1.2em;
+      color: purple;
       font-weight: bold;
     }
 
@@ -84,10 +128,10 @@
     .grade-change {
       margin-left: 5px;
     }
-    
+
     #result {
       margin-top: 15px;
-      margin-bottom: 20px; 
+      margin-bottom: 20px;
       text-align: center;
       position: relative;
     }
@@ -99,27 +143,27 @@
     }
 
     .grade-value {
-      font-size: 2em; 
-      color: #004080; 
+      font-size: 2em;
+      color: #004080;
       font-weight: bold;
       display: inline-block;
     }
 
 
-      
-      
+
+
     .calculate-icon {
       cursor: pointer;
-      height: 32px; 
-      width: 32px;   
-      margin-left: 15px;  
+      height: 32px;
+      width: 32px;
+      margin-left: 15px;
       display: none;
       vertical-align: middle;
-      position: absolute;  
-      right: 10px;        
-      top: 50%;            
-      transform: translateY(-50%); 
-   }
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
 
     .grade-container {
       display: flex;
@@ -135,9 +179,9 @@
       text-align: right;
       margin-top: 20px;
     }
-    
+
     .reset-button {
-      padding: 6px 12px; 
+      padding: 6px 12px;
       font-size: 12px;
       background: linear-gradient(135deg, #ff7f50, #ff4500);
       color: white;
@@ -146,7 +190,7 @@
       cursor: pointer;
       transition: all 0.3s ease-in-out;
       margin-top: 10px;
-      width: 100px; 
+      width: 100px;
       text-align: center;
     }
 
@@ -163,14 +207,13 @@
     }
 
 
-    
     .whatif-section {
-        display: none;
-        margin-top: 10px;
-        padding: 15px 15px 15px 15px;
-        border-top: 3px solid #ddd;
-        position: relative;
-        top: 10px;
+      display: none;
+      margin-top: 10px;
+      padding: 15px 15px 15px 15px;
+      border-top: 3px solid #ddd;
+      position: relative;
+      top: 10px;
     }
 
     .whatif-header {
@@ -179,24 +222,24 @@
       margin-bottom: 10px;
       font-weight: bold;
     }
-    
+
     .whatif-grade {
       text-align: center;
       margin-bottom: 15px;
     }
-    
+
     .whatif-grade-value {
       font-size: 1.8em;
       color: #004080;
       font-weight: bold;
     }
-    
+
     .whatif-grade-label {
       font-size: 0.9em;
       color: #555;
     }
 
-    
+
     .add-assignment-btn {
       background-color: #32a86d;
       color: white;
@@ -209,24 +252,24 @@
       align-items: center;
       width: fit-content;
     }
-    
+
     .add-assignment-btn i {
       margin-left: 5px;
       font-size: 16px;
     }
-    
+
     .add-assignment-btn:disabled {
       background-color: #a0a0a0;
       cursor: not-allowed;
     }
-    
+
     .add-assignment-form {
-        margin-top: 10px;
-        display: none;
-        position: relative;
-        top: 0;
+      margin-top: 10px;
+      display: none;
+      position: relative;
+      top: 0;
     }
-      
+
     .category-select {
       width: 100%;
       padding: 8px;
@@ -234,15 +277,16 @@
       border-radius: 4px;
       border: 1px solid #ddd;
     }
-    
+
     .score-input {
       display: flex;
       align-items: center;
       margin-bottom: 10px;
       width: 100%;
     }
+
     .remove-assignment-btn {
-      background-color: #e03f39; 
+      background-color: #e03f39;
       color: white;
       border: none;
       border-radius: 4px;
@@ -250,14 +294,14 @@
       font-size: 10px;
       font-weight: bold;
       cursor: pointer;
-      margin-left: auto; 
+      margin-left: auto;
       transition: background-color 0.2s;
     }
 
-.remove-assignment-btn:hover {
-  background-color: #ca221c; 
-}
-    
+    .remove-assignment-btn:hover {
+      background-color: #ca221c;
+    }
+
     .score-input input {
       width: 60px;
       padding: 8px;
@@ -265,11 +309,11 @@
       border: 1px solid #ddd;
       text-align: center;
     }
-    
+
     .score-input span {
       margin: 0 8px;
     }
-    
+
     .confirm-btn {
       background-color: #f5e942;
       color: black;
@@ -280,11 +324,11 @@
       cursor: pointer;
       opacity: 0.5;
     }
-    
+
     .confirm-btn:enabled {
       opacity: 1;
     }
-    
+
     .plus-icon {
       background-color: white;
       color: #32a86d;
@@ -297,6 +341,7 @@
       margin-left: 5px;
       font-weight: bold;
     }
+
     .assignments-container {
       margin-top: 20px;
       border-top: 1px dashed #ddd;
@@ -332,7 +377,7 @@
       padding: 8px;
       border-bottom: 1px solid #eee;
     }
-    
+
 
     .assignment-item:last-child {
       border-bottom: none;
@@ -358,7 +403,9 @@
       gap: 5px;
     }
 
-    .edit-btn, .delete-btn {
+    .undo-btn,
+    .edit-btn,
+    .delete-btn {
       padding: 3px 8px;
       border: none;
       border-radius: 3px;
@@ -366,29 +413,118 @@
       font-size: 12px;
     }
 
+    .undo-btn {
+      background-color: #48dcf2;
+      color: white;
+    }
+
+    .undo-btn:hover {
+      background-color: #5195f4;
+    }
+
     .edit-btn {
-      background-color: #060692;
+      background-color: #063592;
       color: rgb(255, 255, 255);
     }
 
     .delete-btn {
-    background-color: transparent;
-    border: none;
-    cursor: pointer;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-image: url('trashcan.png'); 
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    color: transparent; 
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-image: url('trashcan.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      color: transparent;
+    }
+
+    .hidden-warning-icon {
+      height: 24px;
+      width: 24px;
+      cursor: pointer;
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .hidden-dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hidden-dialog-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 300px;
+      width: 90%;
+      max-height: 400px;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .dialog-close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      line-height: 1;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+    }
+
+    .dialog-close-btn:hover {
+      color: #d9534f;
+    }
+
+    #hiddenAssignmentList {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .hidden-category-item {
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .hidden-category-item:last-child {
+      border-bottom: none;
+    }
+
+    .hidden-category-name {
+      font-weight: bold;
+      color: #2196F3;
+      margin-bottom: 5px;
+    }
+
+    .hidden-assignment-info {
+      color: #333;
+      margin-left: 10px;
     }
 
     .delete-btn:hover {
-        opacity: 0.8;
+      opacity: 0.8;
     }
 
     .edit-btn:hover {
@@ -398,81 +534,241 @@
     .delete-btn:hover {
       background-color: #ff3333;
     }
+
+    /* Fancy Error State Styles */
+    .error-container {
+      background: linear-gradient(135deg, #b2ebf2 0%, #80deea 50%, #4dd0e1 100%);
+      border-radius: 16px;
+      padding: 40px 30px;
+      text-align: center;
+      margin: 20px 0;
+      box-shadow: 0 8px 32px rgba(77, 208, 225, 0.3);
+      animation: fadeInScale 0.4s ease-out;
+    }
+
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .error-message {
+      font-size: 1.4em;
+      font-weight: 600;
+      color: #004d5a;
+      margin-bottom: 25px;
+      line-height: 1.4;
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    }
+
+    .error-refresh-btn {
+      background-color: white;
+      color: #00838f;
+      border: none;
+      border-radius: 25px;
+      padding: 12px 36px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    .error-refresh-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      background-color: #f5f5f5;
+    }
+
+    .error-refresh-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    }
+
     input[type="number"]::-webkit-inner-spin-button,
     input[type="number"]::-webkit-outer-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
-    
 
+    #askAI:hover {
+      background-color: #1976D2;
+    }
 
-</style>
+    #sendAIQuery:disabled {
+      background-color: #a0a0a0;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    #sendAIQuery:disabled:hover {
+      background-color: #a0a0a0;
+    }
+
+    .ai-section {
+      display: none;
+      margin-top: 15px;
+      padding: 15px;
+      border-top: 3px solid #ddd;
+      position: relative;
+      top: 10px;
+    }
+
+    .ai-header {
+      font-size: 16px;
+      color: #2196F3;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    #aiQueryInput:focus {
+      outline: none;
+      border-color: #2196F3;
+    }
+
+    #sendAIQuery:hover {
+      background-color: #1976D2;
+    }
+
+    #sendAIQuery:disabled {
+      background-color: #a0a0a0;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
+
 <body>
-  <h2>Aeries Grade Calculator</h2>
-  <h4>Go to the subject's <u>gradebook details</u> page and click the button to fetch grades!</h4>
-
-  <button id="calculate">Calculate Grade</button>
-
-  <div id="result">
-  </div>
-  <div id="loader" style="display: none;">
-    <div class="spinner"></div>
-    <p>Calculating...</p>
-  </div>
-  <div id="history" class="grade-history">
-  </div>
-
-  <div id="resetHistoryContainer">
-    <button id="resetHistory" class="reset-button">Reset History</button>
-  </div>
-
-
-  <div id="whatifSection" class="whatif-section">
-    <div class="whatif-header">What-If Mode</div>
-    
-    <div class="whatif-grade">
-      <div class="whatif-grade-value" id="whatifGradeValue">--.--%</div>
-      <div class="whatif-grade-label">What-If Grade</div>
+  <!-- Compact Error View (hidden by default, shown by JS when not on correct page) -->
+  <div class="compact-error-view">
+    <div
+      style="font-size: 1.2em; font-weight: 600; color: #004d5a; margin-bottom: 20px; line-height: 1.5; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);">
+      Navigate to the class's<br><b>gradebook details page</b><br>and refresh
     </div>
-    
-    <button id="addAssignmentBtn" class="add-assignment-btn">
-      Add Assignment <span class="plus-icon">+</span>
+    <button id="compactRefreshBtn"
+      style="background-color: white; color: #00838f; border: none; border-radius: 25px; padding: 12px 36px; font-size: 1em; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); transition: all 0.3s ease;">
+      Refresh
     </button>
-    <button id="editAssignmentBtn" class="add-assignment-btn" style="background-color: #36cef7; margin-top: 10px;">
-      Edit Existing Assignment 
-    </button>
-    
-    
-    <div id="assignmentForm" class="add-assignment-form">
-      <select id="categorySelect" class="category-select">
-        <option value="" disabled selected>Select Category</option>
-      </select>
-      <select id="assignmentSelect" class="category-select" style="display: none; margin-top: 10px;">
-        <option disabled selected>Select Assignment</option>
-      </select>
+  </div>
 
-      
-      <div class="score-input">
-        <input type="number" id="scoreEarned" placeholder="0" min="0">
-        <span>of</span>
-        <input type="number" id="scoreMax" placeholder="0" min="0">
-        <span>points</span>
-        <button id="removeAssignmentBtn" class="remove-assignment-btn" style="display: none;">REMOVE ASSIGNMENT</button>
+  <!-- Main Content (hidden by default, shown by JS when on correct page) -->
+  <div class="main-content">
+    <h2 id="mainHeader">Aeries Grade Calculator</h2>
+    <h4 id="subHeader">Go to the subject's <u>gradebook details</u> page and click the button to fetch grades!</h4>
+
+    <button id="calculate">Calculate Grade</button>
+    <button id="askAI"
+      style="display: none; margin: 10px auto; padding: 5px 10px; font-size: 16px; background: linear-gradient(135deg, #2196F3, #64B5F6); color: white; border: none; border-radius: 5px; cursor: pointer; transition: opacity 0.3s; width: 25%;">
+      Ask AI
+    </button>
+
+    <div id="aiSection" class="ai-section"
+      style="display: none; margin-top: 15px; padding: 15px; border-top: 3px solid #ddd;">
+      <div class="ai-header" style="font-size: 16px; color: #2196F3; margin-bottom: 10px; font-weight: bold;">AI Grade
+        Assistant</div>
+
+      <div id="userIdDisplay"
+        style="margin-bottom: 10px; padding: 8px; background-color: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666;">
+        <strong>Your User ID:</strong> <span id="userIdText"
+          style="font-family: monospace; word-break: break-all;"></span>
       </div>
-      <button id="confirmAssignment" class="confirm-btn" disabled>Input Assignment</button>
-    </div>
-  <div class="assignments-container">
-    <h4 class="assignments-header">Added Assignments</h4>
-    <div id="assignmentsList" class="assignments-list">
-      <p class="no-assignments">No assignments added yet</p>
-    </div>
-  </div>
-</div>
-  </div>
 
-  <div class="footer">Extension made by Dhruv :<span>&#x29;</span></div>
+      <div id="aiQueryContainer">
+        <textarea id="aiQueryInput" placeholder="Ask a question about your grades!"
+          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; min-height: 60px; resize: vertical; box-sizing: border-box; font-family: Arial, sans-serif;"></textarea>
+        <button id="sendAIQuery"
+          style="margin-top: 10px; padding: 8px 16px; font-size: 14px; background-color: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">Send</button>
+      </div>
+
+      <div id="aiLoader" style="display: none; text-align: center; margin-top: 15px;">
+        <div class="spinner" style="margin: 0 auto;"></div>
+        <p style="margin-top: 10px; font-size: 12px; color: #666;">Thinking...</p>
+      </div>
+
+      <div id="aiResponse"
+        style="margin-top: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 5px; border: 1px solid #ddd; display: none; max-height: 200px; overflow-y: auto; font-size: 12px; line-height: 1.5; color: #333;">
+      </div>
+    </div>
+
+    <div id="result">
+      <img id="hiddenWarningIcon" class="hidden-warning-icon" src="warningicon.png" alt="Hidden Assignments"
+        title="Hidden graded assignments detected" style="display: none;">
+    </div>
+    <div id="loader" style="display: none;">
+      <div class="spinner"></div>
+      <p>Calculating...</p>
+    </div>
+    <div id="history" class="grade-history">
+    </div>
+
+    <div id="resetHistoryContainer">
+      <button id="resetHistory" class="reset-button">Reset History</button>
+    </div>
+
+
+    <!-- Add this dialog at the end of the result div, before it closes -->
+    <div id="hiddenAssignmentDialog" class="hidden-dialog-overlay" style="display: none;">
+      <div class="hidden-dialog-content">
+        <button id="closeHiddenDialog" class="dialog-close-btn">&times;</button>
+        <h3 style="color: #8c0d09; font-weight: bold; margin-bottom: 15px;">Hidden Graded Assignments</h3>
+        <div id="hiddenAssignmentList"></div>
+      </div>
+    </div>
+
+
+    <div id="whatifSection" class="whatif-section">
+      <div class="whatif-header">What-If Mode</div>
+
+      <div class="whatif-grade">
+        <div class="whatif-grade-value" id="whatifGradeValue">--.--%</div>
+        <div class="whatif-grade-label">What-If Grade</div>
+      </div>
+
+      <button id="addAssignmentBtn" class="add-assignment-btn">
+        Add Assignment <span class="plus-icon">+</span>
+      </button>
+      <button id="editAssignmentBtn" class="add-assignment-btn" style="background-color: #36cef7; margin-top: 10px;">
+        Edit Existing Assignment
+      </button>
+
+
+      <div id="assignmentForm" class="add-assignment-form">
+        <select id="categorySelect" class="category-select">
+          <option value="" disabled selected>Select Category</option>
+        </select>
+        <select id="assignmentSelect" class="category-select" style="display: none; margin-top: 10px;">
+          <option disabled selected>Select Assignment</option>
+        </select>
+
+
+        <div class="score-input">
+          <input type="number" id="scoreEarned" placeholder="0" min="0">
+          <span>of</span>
+          <input type="number" id="scoreMax" placeholder="0" min="0">
+          <span>points</span>
+          <button id="removeAssignmentBtn" class="remove-assignment-btn" style="display: none;">REMOVE
+            ASSIGNMENT</button>
+        </div>
+        <button id="confirmAssignment" class="confirm-btn" disabled>Input Assignment</button>
+      </div>
+      <div class="assignments-container">
+        <h4 class="assignments-header">Added Assignments</h4>
+        <div id="assignmentsList" class="assignments-list">
+          <p class="no-assignments">No assignments added yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div> <!-- Close main-content -->
+
+  <div class="footer main-content">Extension made by Dhruv :<span>&#x29;</span></div>
 
   <script src="popup.js"></script>
 </body>
+
 </html>
