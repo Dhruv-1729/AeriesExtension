@@ -289,6 +289,8 @@ function animateGradeChange(element, startValue, endValue) {
     requestAnimationFrame(updateValue);
 }
 
+
+
 let currentGradeData = null;
 let currentTeacher = null;
 let tempAeriesOriginalEarned = null;
