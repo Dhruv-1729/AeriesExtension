@@ -176,14 +176,74 @@
     .footer {
       font-size: 0.9em;
       color: black;
-      text-align: right;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-top: 20px;
+    }
+
+    .share-button {
+      background-color: #9232b5;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.3s ease;
+      position: relative;
+      bottom: 10px;
+    }
+
+    .share-button:hover {
+      background-color: #9340b5;
+    }
+
+    .share-button svg {
+      width: 11px;
+      height: 11px;
+      fill: white;
+    }
+
+    .copied-popup {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #4CAF50;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+      margin-bottom: 5px;
+    }
+
+    .copied-popup::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #4CAF50;
+    }
+
+    .copied-popup.show {
+      opacity: 1;
+      visibility: visible;
     }
 
     .reset-button {
       padding: 6px 12px;
       font-size: 12px;
-      background: linear-gradient(135deg, #ff7f50, #ff4500);
+      background-color: #e85a3c;
       color: white;
       border: none;
       border-radius: 5px;
@@ -195,7 +255,7 @@
     }
 
     .reset-button:hover {
-      background: linear-gradient(135deg, #ff4500, #ff7f50);
+      background-color: #d44a2c;
     }
 
     #resetHistoryContainer {
@@ -674,12 +734,11 @@
 
       <div id="userIdDisplay"
         style="margin-bottom: 10px; padding: 8px; background-color: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666;">
-        <strong>Your User ID:</strong> <span id="userIdText"
-          style="font-family: monospace; word-break: break-all;"></span>
+        <strong>User ID:</strong> <span id="userIdText" style="font-family: monospace; word-break: break-all;"></span>
       </div>
 
       <div id="aiQueryContainer">
-        <textarea id="aiQueryInput" placeholder="Ask a question about your grades!"
+        <textarea id="aiQueryInput" placeholder="ask a question about your grades!"
           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; min-height: 60px; resize: vertical; box-sizing: border-box; font-family: Arial, sans-serif;"></textarea>
         <button id="sendAIQuery"
           style="margin-top: 10px; padding: 8px 16px; font-size: 14px; background-color: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">Send</button>
@@ -766,7 +825,17 @@
   </div>
   </div> <!-- Close main-content -->
 
-  <div class="footer main-content">Extension made by Dhruv :<span>&#x29;</span></div>
+  <div class="footer main-content">
+    <button id="shareButton" class="share-button">
+      share!
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path
+          d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" />
+      </svg>
+      <span id="copiedPopup" class="copied-popup">copied!</span>
+    </button>
+    <span> Extension made by Dhruv :&#x29;</span>
+  </div>
 
   <script src="popup.js"></script>
 </body>

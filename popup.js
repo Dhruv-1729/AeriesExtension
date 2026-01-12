@@ -848,7 +848,7 @@ function formatGradeDataForAPI(gradeData, currentGrade) {
     return formatted;
 }
 
-async function callGeminiAPI(userQuery, gradeDataText) {
+async function callGeminiAPI(userQuery, gradeDataText, userId) {
     const systemPrompt = `You are a helpful grade calculator assistant for students using the Aeries gradebook system. You have access to detailed grade information including:
 
 1. The student's current overall grade percentage for a specific class
@@ -903,6 +903,7 @@ Now answer the student's question:`;
             },
             body: JSON.stringify({
                 action: 'callGemini',
+                userId: userId,
                 requestBody: requestBody
             })
         });
@@ -1043,7 +1044,8 @@ async function handleAIQuery(clickTimestamp) {
         const formattedData = formatGradeDataForAPI(gradeData, parseFloat(currentGrade) || 0);
 
 
-        const response = await callGeminiAPI(userQuery, formattedData);
+        const userId = await getOrCreateUserId();
+        const response = await callGeminiAPI(userQuery, formattedData, userId);
 
         const isWhitelisted = await isUserWhitelisted();
         if (!isWhitelisted) {
@@ -1169,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (teacher) {
             resetGradeHistory(teacher);
         } else {
-            //console.log("No teacher found to reset history for.");
+            //console.log("no teacher found to reset history for.");
         }
     });
 
@@ -1218,6 +1220,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeAssignmentBtn = document.getElementById("removeAssignmentBtn");
 
     addAssignmentBtn.addEventListener("click", () => {
+        // Toggle: if form is visible and we're in add mode, collapse it
+        if (assignmentForm.style.display === "block" && !isEditingExistingAssignment) {
+            assignmentForm.style.display = "none";
+            resetAssignmentForm();
+            return;
+        }
+
         resetAssignmentForm();
         isEditingExistingAssignment = false;
         tempAeriesOriginalEarned = null;
@@ -1229,6 +1238,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     editAssignmentBtn.addEventListener("click", () => {
+        // Toggle: if form is visible and we're in edit mode, collapse it
+        if (assignmentForm.style.display === "block" && isEditingExistingAssignment) {
+            assignmentForm.style.display = "none";
+            resetAssignmentForm();
+            isEditingExistingAssignment = false;
+            return;
+        }
+
         resetAssignmentForm();
         isEditingExistingAssignment = true;
         confirmAssignment.textContent = "Update (Aeries) Assignment";
@@ -1426,6 +1443,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Share button functionality
+    const shareButton = document.getElementById("shareButton");
+    const copiedPopup = document.getElementById("copiedPopup");
+
+    if (shareButton) {
+        shareButton.addEventListener("click", async () => {
+            const extensionUrl = "https://bit.ly/aeriescalc";
+
+            try {
+                await navigator.clipboard.writeText(extensionUrl);
+
+                if (copiedPopup) {
+                    copiedPopup.classList.add("show");
+
+                    setTimeout(() => {
+                        copiedPopup.classList.remove("show");
+                    }, 1000);
+                }
+            } catch (err) {
+                console.error("Failed to copy link:", err);
+                alert("Copy this link: " + extensionUrl);
+            }
+        });
+    }
+
 });
 
-//console.log("popup.js script loaded. whatIfAssignments initial:", JSON.stringify(whatIfAssignments, null, 2));
