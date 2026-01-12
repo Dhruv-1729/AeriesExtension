@@ -1,12 +1,12 @@
 <div align="center">
 
   ## Dhruv's Aeries Grade Checker Extension 
-  *Last Updated: 05/29/2025*
+  *Last Updated: 01/11/2026*
 
 **Works with *Aeries* ONLY**
 </div>
 
-## Installation
+## Manual Installation
 
 1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v7.1-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.1)
    
