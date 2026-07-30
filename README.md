@@ -1,12 +1,15 @@
 <div align="center">
 
   ## Dhruv's Aeries Grade Checker Extension 
-  *Last Updated: 01/11/2026*
+  *Last Updated: 07/30/2026*
 
 **Works with *Aeries* ONLY**
 </div>
 
-## Manual Installation
+
+## Find this extension on the [chrome web store!](https://chromewebstore.google.com/detail/aeries-grade-calculator/dmambbnjadglkainpnjfidolknpdoljm)
+
+### Manual Installation
 
 1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v7.1-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/7.1)
    

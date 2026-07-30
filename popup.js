@@ -1,124 +1,120 @@
 
-const ENDPOINT = 'https://script.google.com/macros/s/AKfycbw6J8_Wgqu-iRs2FFLk7vwbvZsZLEYm0m8P7X_pYn4N8fLeQgKaLW34CgXAse1jY7eF/exec';
+const EDGE_FUNCTION_URL = 'https://htxvtjdkalfnujztetmi.supabase.co/functions/v1/gemini-proxy';
 let aiHistory = [];
-const RATE_LIMIT_ENABLED = true;
 const MAX_QUERIES_PER_PERIOD = 3;
-const RATE_LIMIT_RESET_HOURS = 24;
-async function getOrCreateUserId() {
-    return new Promise(async (resolve) => {
-        chrome.storage.local.get({ userId: null, queryCount: 0, lastResetDate: null }, async (data) => {
-            let userId = data.userId;
+const AI_STATUS_SEQUENCE = ["Thinking...", "Fetching...", "Analyzing..."];
+let aiStatusIntervalId = null;
+let installationContextCache = null;
+let useCompressedContext = false;
+let cachedIsWhitelisted = null;
 
-            if (!userId) {
-                // fetch from sever
-                let idhist = [];
-                try {
-                    const response = await fetch(`${ENDPOINT}?action=getIdHist`, {
-                        credentials: 'omit'
-                    });
-                    if (response.ok) {
-                        const result = await response.json();
-                        idhist = result.idHist || [];
-                    }
-                } catch (error) {
-                    console.error("Error fetching idhist:", error);
+const INSTALL_TOKEN_KEY = "installToken";
+const INSTALL_USER_ID_KEY = "installUserId";
+const AI_MODEL_KEY = "aiModelSelection";
+const DEFAULT_AI_MODEL = "gemini-2.5-flash";
+const PREMIUM_AI_MODEL = "gemini-3-flash-preview";
+const AI_MAX_CHARS_DEFAULT = 500;
+const AI_MAX_CHARS_WHITELISTED = 1500;
+const HIDDEN_WARNING_DISMISS_LIMIT = 15;
 
-                }
-
-                // make unique userid
-                do {
-                    userId = Math.floor(Math.random() * 10000) + 1;
-                } while (idhist.includes(userId));
-
-                // push to server
-                try {
-                    await fetch(ENDPOINT, {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain" },
-                        body: JSON.stringify({ action: 'addToIdHist', userId })
-                    });
-                } catch (error) {
-                    console.error("Error adding to idhist:", error);
-                }
-
-                chrome.storage.local.set({ userId }, () => {
-                    resolve(userId);
-                });
-            } else {
-                resolve(userId);
-            }
-        });
+function storageGetLocal(defaults) {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(defaults, (data) => resolve(data));
     });
 }
 
-async function isUserWhitelisted() {
-    try {
-        const userId = String(await getOrCreateUserId());
+function storageGetSync(defaults) {
+    return new Promise((resolve) => {
+        chrome.storage.sync.get(defaults, (data) => resolve(data));
+    });
+}
 
-        const response = await fetch(`${ENDPOINT}?action=getWhitelist`, {
-            credentials: 'omit'
-        });
-        if (!response.ok) return false;
-
-        const data = await response.json();
-        const allowedIds = data.allowedIds || [];
-
-        return allowedIds.includes(userId);
-    } catch (error) {
-        console.error("Error checking whitelist:", error);
-        return false; // failsafe
+async function getPersistedInstallContext() {
+    const syncData = await storageGetSync({ [INSTALL_TOKEN_KEY]: null, [INSTALL_USER_ID_KEY]: null });
+    if (syncData[INSTALL_TOKEN_KEY]) {
+        return { installToken: syncData[INSTALL_TOKEN_KEY], userId: syncData[INSTALL_USER_ID_KEY] || null };
     }
+    const localData = await storageGetLocal({ [INSTALL_TOKEN_KEY]: null, [INSTALL_USER_ID_KEY]: null });
+    return { installToken: localData[INSTALL_TOKEN_KEY] || null, userId: localData[INSTALL_USER_ID_KEY] || null };
 }
 
-// ratelimit
-async function checkRateLimit() {
-    if (!RATE_LIMIT_ENABLED) return { allowed: true, remaining: Infinity };
+async function persistInstallContext(installToken, userId) {
+    const payload = { [INSTALL_TOKEN_KEY]: installToken, [INSTALL_USER_ID_KEY]: userId || null };
+    await Promise.all([
+        new Promise((resolve) => chrome.storage.sync.set(payload, resolve)),
+        new Promise((resolve) => chrome.storage.local.set(payload, resolve))
+    ]);
+}
 
-    return new Promise((resolve) => {
-        chrome.storage.local.get({ queryCount: 0, lastResetDate: null }, (data) => {
-            const now = new Date();
-            const lastReset = data.lastResetDate ? new Date(data.lastResetDate) : null;
-
-
-            let queryCount = data.queryCount || 0;
-            if (!lastReset || (now - lastReset) >= (RATE_LIMIT_RESET_HOURS * 60 * 60 * 1000)) {
-                queryCount = 0;
-                chrome.storage.local.set({
-                    queryCount: 0,
-                    lastResetDate: now.toISOString()
-                });
-            }
-
-            const allowed = queryCount < MAX_QUERIES_PER_PERIOD;
-            const remaining = Math.max(0, MAX_QUERIES_PER_PERIOD - queryCount);
-
-            resolve({ allowed, remaining, count: queryCount });
-        });
+async function bootstrapInstallation(existingToken) {
+    const headers = { "Content-Type": "application/json" };
+    if (existingToken) {
+        headers.Authorization = `Bearer ${existingToken}`;
+    }
+    const response = await fetch(EDGE_FUNCTION_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "registerInstallation" })
     });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Bootstrap failed (${response.status})`);
+    }
+    return response.json();
 }
 
+async function getInstallationContext(forceRefresh = false) {
+    if (!forceRefresh && installationContextCache?.installToken) {
+        return installationContextCache;
+    }
 
-async function incrementRateLimit() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get({ queryCount: 0, lastResetDate: null }, (data) => {
-            const now = new Date();
-            const lastReset = data.lastResetDate ? new Date(data.lastResetDate) : null;
+    const stored = await getPersistedInstallContext();
 
+    if (!forceRefresh && stored.installToken && stored.userId) {
+        installationContextCache = { installToken: stored.installToken, userId: stored.userId };
+        return installationContextCache;
+    }
 
-            let queryCount = data.queryCount || 0;
-            if (!lastReset || (now - lastReset) >= (RATE_LIMIT_RESET_HOURS * 60 * 60 * 1000)) {
-                queryCount = 0;
-            }
+    const result = await bootstrapInstallation(forceRefresh ? null : stored.installToken);
+    if (!result.installToken || !result.userId) {
+        throw new Error("Invalid installation bootstrap response.");
+    }
 
-            const newCount = queryCount + 1;
-            chrome.storage.local.set({
-                queryCount: newCount,
-                lastResetDate: now.toISOString()
-            }, () => {
-                resolve(newCount);
+    await persistInstallContext(result.installToken, result.userId);
+    installationContextCache = { installToken: result.installToken, userId: result.userId };
+    return installationContextCache;
+}
+
+async function serverCheckRateLimit() {
+    try {
+        let installCtx = await getInstallationContext();
+        let response = await fetch(EDGE_FUNCTION_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${installCtx.installToken}`
+            },
+            body: JSON.stringify({ action: "checkRateLimit" })
+        });
+
+        if ((response.status === 401 || response.status === 403)) {
+            installCtx = await getInstallationContext(true);
+            response = await fetch(EDGE_FUNCTION_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${installCtx.installToken}`
+                },
+                body: JSON.stringify({ action: "checkRateLimit" })
             });
-        });
-    });
+        }
+
+        if (!response.ok) return { allowed: false, remaining: 0, isWhitelisted: false, max: MAX_QUERIES_PER_PERIOD };
+        return await response.json();
+    } catch (error) {
+        console.error("Error checking rate limit:", error);
+        return { allowed: false, remaining: 0, isWhitelisted: false, max: MAX_QUERIES_PER_PERIOD };
+    }
 }
 
 function renderAssignmentsList() {
@@ -137,28 +133,49 @@ function renderAssignmentsList() {
         const assignmentItem = document.createElement("div");
         assignmentItem.className = "assignment-item";
 
-        if (assignment.type === 'removed') {
-            assignmentItem.innerHTML = `
-                <div class="assignment-info">
-                    <span class="assignment-category">${assignment.categoryName}</span>
-                    <span class="assignment-score" style="color: #c9302c;">${assignment.name} <strong>[REMOVED]</strong></span>
-                </div>
-                <div class="assignment-actions">
-                    <button class="undo-btn" data-index="${index}">Undo</button>
-                </div>
-            `;
+        const assignmentInfo = document.createElement("div");
+        assignmentInfo.className = "assignment-info";
+
+        const categorySpan = document.createElement("span");
+        categorySpan.className = "assignment-category";
+        categorySpan.textContent = assignment.categoryName || "Unknown";
+        assignmentInfo.appendChild(categorySpan);
+
+        const scoreSpan = document.createElement("span");
+        scoreSpan.className = "assignment-score";
+
+        const assignmentActions = document.createElement("div");
+        assignmentActions.className = "assignment-actions";
+
+        if (assignment.type === "removed") {
+            scoreSpan.style.color = "#c9302c";
+            scoreSpan.textContent = `${assignment.name || "Unnamed Assignment"} [REMOVED]`;
+
+            const undoButton = document.createElement("button");
+            undoButton.className = "undo-btn";
+            undoButton.setAttribute("data-index", String(index));
+            undoButton.textContent = "Undo";
+            assignmentActions.appendChild(undoButton);
         } else {
-            assignmentItem.innerHTML = `
-                <div class="assignment-info">
-                    <span class="assignment-category">${assignment.categoryName}</span>
-                    <span class="assignment-score">${assignment.earned}/${assignment.max} points</span>
-                </div>
-                <div class="assignment-actions">
-                    <button class="edit-btn" data-index="${index}">Edit</button>
-                    <button class="delete-btn" data-index="${index}">×</button>
-                </div>
-            `;
+            scoreSpan.textContent = `${assignment.earned}/${assignment.max} points`;
+
+            const editButton = document.createElement("button");
+            editButton.className = "edit-btn";
+            editButton.setAttribute("data-index", String(index));
+            editButton.textContent = "Edit";
+
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "delete-btn";
+            deleteButton.setAttribute("data-index", String(index));
+            deleteButton.textContent = "×";
+
+            assignmentActions.appendChild(editButton);
+            assignmentActions.appendChild(deleteButton);
         }
+
+        assignmentInfo.appendChild(scoreSpan);
+        assignmentItem.appendChild(assignmentInfo);
+        assignmentItem.appendChild(assignmentActions);
         assignmentsList.appendChild(assignmentItem);
     });
 
@@ -258,14 +275,32 @@ function resetAssignmentForm() {
     const scoreMax = document.getElementById("scoreMax");
     const confirmAssignment = document.getElementById("confirmAssignment");
     const removeAssignmentBtn = document.getElementById("removeAssignmentBtn");
+    const livePercentageDisplay = document.getElementById("livePercentageDisplay");
+    const editPercentageWrapper = document.getElementById("editPercentageWrapper");
+    const editPercentageDisplay = document.getElementById("editPercentageDisplay");
 
     categorySelect.value = "";
     scoreEarned.value = "";
     scoreMax.value = "";
     confirmAssignment.disabled = true;
+    removeAssignmentBtn.disabled = true;
     assignmentSelect.innerHTML = '<option value="" disabled selected>Select Assignment</option>';
     assignmentSelect.style.display = "none";
     removeAssignmentBtn.style.display = "none";
+
+    // Reset live percentage display (Add mode)
+    if (livePercentageDisplay) {
+        livePercentageDisplay.textContent = "";
+        livePercentageDisplay.classList.remove("visible");
+    }
+
+    // Reset edit percentage display (Edit mode)
+    if (editPercentageWrapper) {
+        editPercentageWrapper.classList.remove("visible");
+    }
+    if (editPercentageDisplay) {
+        editPercentageDisplay.textContent = "";
+    }
 
     if (confirmAssignment.hasAttribute("data-edit-index")) {
         confirmAssignment.removeAttribute("data-edit-index");
@@ -301,7 +336,7 @@ let whatIfAssignments = [];
 let isEditingExistingAssignment = false;
 async function displayResult(result) {
     hideLoader();
-    aiHistory = []
+    aiHistory = [];
     const resultElement = document.getElementById("result");
     const resetHistoryContainer = document.getElementById("resetHistoryContainer");
 
@@ -310,27 +345,12 @@ async function displayResult(result) {
         currentTeacher = result.teacher;
 
         resultElement.innerHTML = `
+            <img id="hiddenWarningIcon" class="hidden-warning-icon" src="${chrome.runtime.getURL('warningicon.png')}" alt="Hidden Assignments" title="Hidden graded assignments detected" style="display: none;">
             <div class="grade-label" style="text-align: center;">Overall Grade is</div>
             <div class="grade-container" style="display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
                 <div class="grade-value">${result.grade}%</div>
             </div>
         `;
-
-        let calculateIcon = document.querySelector(".calculate-icon");
-        if (!calculateIcon) {
-            calculateIcon = document.createElement("img");
-            calculateIcon.className = "calculate-icon";
-            calculateIcon.addEventListener("click", toggleWhatIfMode);
-        }
-        calculateIcon.src = chrome.runtime.getURL("Calculator Icon.png");
-        calculateIcon.alt = "What-If Calculator";
-        calculateIcon.title = "Try What-If Grade";
-        calculateIcon.style.display = "inline-block";
-
-        const container = document.querySelector(".grade-container");
-        if (container && !container.contains(calculateIcon)) {
-            container.appendChild(calculateIcon);
-        }
 
         resultElement.setAttribute("data-teacher", result.teacher);
         await saveGrade(result.grade, result.teacher);
@@ -343,20 +363,33 @@ async function displayResult(result) {
         }
 
 
-        fetchGradeDataForDropdown();
-
         if (result.success) {
-            detectHiddenAssignments().then(async (hiddenAssignments) => {
+            console.log("[Popup] Starting hidden assignment check...");
+
+            fetchGradeDataForDropdown().then(() => {
+                console.log("[Popup] Grade data fetched, now detecting hidden assignments...");
+                return detectHiddenAssignments();
+            }).then(async (hiddenAssignments) => {
+                console.log("[Popup] Detection complete, found:", hiddenAssignments.length, "hidden assignments");
+
                 if (hiddenAssignments.length > 0) {
                     const dismissCount = await checkHiddenAssignmentDismissal(result.teacher);
+                    console.log("[Popup] Dismiss count for", result.teacher, ":", dismissCount);
 
-                    if (dismissCount < 15) {
+                    if (dismissCount < HIDDEN_WARNING_DISMISS_LIMIT) {
                         const warningIcon = document.getElementById("hiddenWarningIcon");
                         if (warningIcon) {
                             warningIcon.style.display = "inline-block";
+                            warningIcon.onclick = () => {
+                                showHiddenAssignmentDialog(hiddenAssignments);
+                            };
                         }
+                    } else {
+                        console.log("[Popup] Warning icon suppressed due to dismiss count >=", HIDDEN_WARNING_DISMISS_LIMIT);
                     }
                 }
+            }).catch((err) => {
+                console.error("[Popup] Error in hidden assignment detection:", err);
             });
         }
 
@@ -388,45 +421,30 @@ function resetGradeHistory(teacher) {
     });
 }
 
-function toggleWhatIfMode() {
-    const whatifSection = document.getElementById("whatifSection");
-    const aiSection = document.getElementById("aiSection");
-
-    if (whatifSection.style.display === "block") {
-        whatifSection.style.display = "none";
-        whatIfAssignments = [];
-        document.getElementById("assignmentForm").style.display = "none";
-        resetAssignmentForm();
-    } else {
-        if (aiSection && aiSection.style.display === "block") {
-            aiSection.style.display = "none";
-        }
-
-        whatifSection.style.display = "block";
-        fetchGradeDataForDropdown();
-        document.getElementById("whatifGradeValue").textContent = `${originalGrade?.toFixed(2) ?? 'N/A'}%`;
-        renderAssignmentsList();
-    }
-}
-
 function fetchGradeDataForDropdown() {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs[0] || !tabs[0].id) {
-            console.error("No active tab found or tab has no ID.");
-            populateCategoryDropdown([]);
-            return;
-        }
-        chrome.tabs.sendMessage(tabs[0].id, { action: "getGradeData" }, (response) => {
-            if (chrome.runtime.lastError) {
-                console.error("Runtime error in fetchGradeDataForDropdown:", chrome.runtime.lastError.message);
+    return new Promise((resolve) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (!tabs[0] || !tabs[0].id) {
+                console.error("No active tab found or tab has no ID.");
                 populateCategoryDropdown([]);
-            } else if (response && response.gradeData) {
-                currentGradeData = response.gradeData;
-                populateCategoryDropdown(currentGradeData);
-            } else {
-                console.error("No grade data received for dropdown.");
-                populateCategoryDropdown([]);
+                resolve([]);
+                return;
             }
+            chrome.tabs.sendMessage(tabs[0].id, { action: "getGradeData" }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error("Runtime error in fetchGradeDataForDropdown:", chrome.runtime.lastError.message);
+                    populateCategoryDropdown([]);
+                    resolve([]);
+                } else if (response && response.gradeData) {
+                    currentGradeData = response.gradeData;
+                    populateCategoryDropdown(currentGradeData);
+                    resolve(currentGradeData);
+                } else {
+                    console.error("No grade data received for dropdown.");
+                    populateCategoryDropdown([]);
+                    resolve([]);
+                }
+            });
         });
     });
 }
@@ -530,6 +548,7 @@ function checkFormValidity() {
     const scoreEarned = document.getElementById("scoreEarned");
     const scoreMax = document.getElementById("scoreMax");
     const confirmAssignment = document.getElementById("confirmAssignment");
+    const removeAssignmentBtn = document.getElementById("removeAssignmentBtn");
 
     const categoryValid = categorySelect.value !== "";
     const earnedNumeric = !isNaN(parseFloat(scoreEarned.value));
@@ -541,6 +560,58 @@ function checkFormValidity() {
     const assignmentSelectionValid = !isEditingExistingAssignment || (assignmentSelect.value !== "" && assignmentSelect.selectedIndex > 0);
 
     confirmAssignment.disabled = !(categoryValid && earnedValid && maxValid && assignmentSelectionValid);
+    removeAssignmentBtn.disabled = !(categoryValid && earnedValid && maxValid && assignmentSelectionValid);
+
+
+    // Update live percentage display
+    updateLivePercentage();
+}
+
+function updateLivePercentage() {
+    const scoreEarned = document.getElementById("scoreEarned");
+    const scoreMax = document.getElementById("scoreMax");
+    const livePercentageDisplay = document.getElementById("livePercentageDisplay");
+    const editPercentageWrapper = document.getElementById("editPercentageWrapper");
+    const editPercentageDisplay = document.getElementById("editPercentageDisplay");
+
+    const earned = parseFloat(scoreEarned.value);
+    const max = parseFloat(scoreMax.value);
+
+    // Check if both values are valid numbers and max is greater than 0
+    const isValidPercentage = !isNaN(earned) && !isNaN(max) && max > 0 && scoreEarned.value !== "" && scoreMax.value !== "";
+    const percentageText = isValidPercentage ? (earned / max * 100).toFixed(2) + "%" : "";
+
+    if (isEditingExistingAssignment) {
+        // Edit mode: show percentage between 'points' and REMOVE ASSIGNMENT button
+        if (livePercentageDisplay) {
+            livePercentageDisplay.textContent = "";
+            livePercentageDisplay.classList.remove("visible");
+        }
+        if (editPercentageWrapper && editPercentageDisplay) {
+            editPercentageDisplay.textContent = percentageText;
+            if (isValidPercentage) {
+                editPercentageWrapper.classList.add("visible");
+            } else {
+                editPercentageWrapper.classList.remove("visible");
+            }
+        }
+    } else {
+        // Add mode: show percentage on the right side
+        if (editPercentageWrapper) {
+            editPercentageWrapper.classList.remove("visible");
+        }
+        if (editPercentageDisplay) {
+            editPercentageDisplay.textContent = "";
+        }
+        if (livePercentageDisplay) {
+            livePercentageDisplay.textContent = percentageText;
+            if (isValidPercentage) {
+                livePercentageDisplay.classList.add("visible");
+            } else {
+                livePercentageDisplay.classList.remove("visible");
+            }
+        }
+    }
 }
 
 
@@ -598,20 +669,40 @@ function recalculateWhatIfGrade() {
         }
     });
 
-    let newWeightedSum = 0;
-    let newTotalWeight = 0;
+    const usesCategoryWeights = newGradeData.some(
+        (category) => category?.tableUsesCategoryWeights === true
+    );
 
-    newGradeData.forEach(category => {
-        if (!category.max || parseFloat(category.max) <= 0) return;
+    let newGrade = originalGrade || 0;
+    if (usesCategoryWeights) {
+        let newWeightedSum = 0;
+        let newTotalWeight = 0;
 
-        const percentage = (parseFloat(category.points) / parseFloat(category.max)) * 100;
-        const weight = parseFloat(category.weight) / 100;
+        newGradeData.forEach(category => {
+            if (!category.max || parseFloat(category.max) <= 0) return;
 
-        newWeightedSum += percentage * weight;
-        newTotalWeight += weight;
-    });
+            const percentage = (parseFloat(category.points) / parseFloat(category.max)) * 100;
+            const weight = parseFloat(category.weight) / 100;
 
-    const newGrade = newTotalWeight > 0 ? newWeightedSum / newTotalWeight : originalGrade || 0;
+            newWeightedSum += percentage * weight;
+            newTotalWeight += weight;
+        });
+
+        newGrade = newTotalWeight > 0 ? newWeightedSum / newTotalWeight : originalGrade || 0;
+    } else {
+        let totalPoints = 0;
+        let totalMax = 0;
+
+        newGradeData.forEach(category => {
+            const points = parseFloat(category.points);
+            const max = parseFloat(category.max);
+            if (Number.isNaN(points) || Number.isNaN(max) || max <= 0) return;
+            totalPoints += points;
+            totalMax += max;
+        });
+
+        newGrade = totalMax > 0 ? (totalPoints / totalMax) * 100 : originalGrade || 0;
+    }
     //console.log(`[recalculateWhatIfGrade] Final calculation: weightedSum=${newWeightedSum.toFixed(4)}, totalWeight=${newTotalWeight.toFixed(4)}, newGrade=${newGrade.toFixed(2)}`);
 
     const whatifGradeDisplay = document.getElementById("whatifGradeValue");
@@ -680,7 +771,9 @@ function moveFormBelow(buttonElement) {
 }
 
 async function detectHiddenAssignments() {
+    console.log("[Popup] detectHiddenAssignments called, currentGradeData:", currentGradeData);
     if (!currentGradeData || currentGradeData.length === 0) {
+        console.log("[Popup] No grade data, returning empty");
         return [];
     }
 
@@ -688,6 +781,7 @@ async function detectHiddenAssignments() {
 
     for (let i = 0; i < currentGradeData.length; i++) {
         const category = currentGradeData[i];
+        console.log(`[Popup] Checking category ${i}: ${category.category}`);
 
         const assignments = await new Promise((resolve) => {
             chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -700,36 +794,31 @@ async function detectHiddenAssignments() {
                     categoryIndex: i
                 }, (response) => {
                     if (chrome.runtime.lastError || !response) {
+                        console.log(`[Popup] Error or no response for category ${i}`);
                         resolve([]);
                     } else {
+                        console.log(`[Popup] Got ${response.assignments?.length || 0} assignments for category ${category.category}:`, response.assignments);
                         resolve(response.assignments || []);
                     }
                 });
             });
         });
 
-        let visibleMaxTotal = 0;
-        let visibleEarnedTotal = 0;
+        // Look for assignments with isHidden flag
         assignments.forEach(a => {
-            visibleMaxTotal += parseFloat(a.max) || 0;
-            visibleEarnedTotal += parseFloat(a.points) || 0;
+            console.log(`[Popup] Assignment "${a.name}" isHidden:`, a.isHidden);
+            if (a.isHidden) {
+                hiddenAssignments.push({
+                    categoryName: category.category,
+                    assignmentName: a.name,
+                    hiddenMax: parseFloat(a.max).toFixed(2),
+                    hiddenEarned: parseFloat(a.points).toFixed(2)
+                });
+            }
         });
-
-        const categoryMax = parseFloat(category.max) || 0;
-        const categoryEarned = parseFloat(category.points) || 0;
-
-        const hiddenMax = categoryMax - visibleMaxTotal;
-        const hiddenEarned = categoryEarned - visibleEarnedTotal;
-
-        if (hiddenMax > 0.01) {
-            hiddenAssignments.push({
-                categoryName: category.category,
-                hiddenMax: hiddenMax.toFixed(2),
-                hiddenEarned: hiddenEarned.toFixed(2)
-            });
-        }
     }
 
+    console.log("[Popup] Total hidden assignments found:", hiddenAssignments.length, hiddenAssignments);
     return hiddenAssignments;
 }
 
@@ -760,10 +849,18 @@ function showHiddenAssignmentDialog(hiddenAssignments) {
     hiddenAssignments.forEach(item => {
         const categoryDiv = document.createElement("div");
         categoryDiv.className = "hidden-category-item";
-        categoryDiv.innerHTML = `
-            <div class="hidden-category-name">${item.categoryName}</div>
-            <div class="hidden-assignment-info">Hidden Assignment - scored ${item.hiddenEarned} out of ${item.hiddenMax} points</div>
-        `;
+        const assignmentName = item.assignmentName || "Hidden Assignment";
+
+        const categoryNameEl = document.createElement("div");
+        categoryNameEl.className = "hidden-category-name";
+        categoryNameEl.textContent = item.categoryName || "Unknown category";
+
+        const assignmentInfoEl = document.createElement("div");
+        assignmentInfoEl.className = "hidden-assignment-info";
+        assignmentInfoEl.textContent = `${assignmentName} - scored ${item.hiddenEarned} out of ${item.hiddenMax} points`;
+
+        categoryDiv.appendChild(categoryNameEl);
+        categoryDiv.appendChild(assignmentInfoEl);
         listContainer.appendChild(categoryDiv);
     });
 
@@ -848,84 +945,83 @@ function formatGradeDataForAPI(gradeData, currentGrade) {
     return formatted;
 }
 
-async function callGeminiAPI(userQuery, gradeDataText, userId) {
-    const systemPrompt = `You are a helpful grade calculator assistant for students using the Aeries gradebook system. You have access to detailed grade information including:
+function formatGradeDataCompressed(gradeData, currentGrade) {
+    let formatted = `Current Overall Grade: ${currentGrade}%\n\nGrade Categories (summary):\n`;
 
-1. The student's current overall grade percentage for a specific class
-2. All grade categories in that class with their weights, points earned, and points possible
-3. Individual assignments within each category with their scores for that class
- 
-Your role is to help students understand their grades and answer questions about:
-- What scores they need on future assignments to achieve target grades in the class
-- How different scenarios would affect their overall grade in the class
-- Understanding their current grade breakdown
-- Calculating what-if scenarios
-- Predict future assignments or teacher trends
+    gradeData.forEach((category, index) => {
+        const pct = category.percentage != null ? `${category.percentage}%` : 'N/A';
+        formatted += `${index + 1}. ${category.category}: ${category.points}/${category.max} pts (${pct}) — Weight: ${category.weight}%\n`;
+    });
 
-When answering questions:
-- Be clear and precise with calculations
-- Use the exact category names and assignment names from the data provided
-- If a question involves a hypothetical assignment, explain how it would affect the relevant category and overall grade
-- Always consider category weights when calculating overall grade impacts
-- Usually keep answers short, 2-3 sentences is the ideal response length for most requests. 
-Here is the student's current grade data:
+    return formatted;
+}
 
-${gradeDataText}
-
-Now answer the student's question:`;
-
-    let currentParts;
-
-    if (aiHistory.length === 0) {
-        currentParts = [{
-            text: `${systemPrompt}\n\n${userQuery}`
-        }];
-    } else {
-        currentParts = [{
-            text: userQuery
-        }];
-    }
-
-    const conversationPayload = [
-        ...aiHistory,
-        { role: "user", parts: currentParts }
-    ];
-
-    const requestBody = {
-        contents: conversationPayload
-    };
-
+async function callGeminiAPI(userQuery, gradeDataText) {
+    // Only raw user text and grade data are sent — the system prompt is owned server-side.
+    // aiHistory stores clean turns (user question / model answer) with no prompt injected.
     try {
-        const response = await fetch(ENDPOINT, {
+        const installCtx = await getInstallationContext();
+        const response = await fetch(EDGE_FUNCTION_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'text/plain',
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${installCtx.installToken}`
             },
             body: JSON.stringify({
                 action: 'callGemini',
-                userId: userId,
-                requestBody: requestBody
+                userQuery,
+                gradeData: gradeDataText,
+                history: aiHistory,
+                model: getSelectedAIModel()
             })
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error?.message || `API error: ${response.status}`);
+            if (response.status === 401 || response.status === 403) {
+                await getInstallationContext(true);
+            }
+            if (errorData.error === "rate_limit_exceeded") {
+                throw new Error(errorData.message || "Rate limit exceeded.");
+            }
+            if (errorData.error === "too_fast") {
+                throw new Error(errorData.message || "Please wait a moment before sending another query.");
+            }
+            if (errorData.error === "query_too_long") {
+                throw new Error(errorData.message || "Query is too long.");
+            }
+            if (errorData.error === "upstream_gemini_error") {
+                const detailText = typeof errorData.detail === "string"
+                    ? errorData.detail
+                    : JSON.stringify(errorData.detail || {});
+
+                // If the selected model is invalid/unavailable, don't mislabel it as a context issue.
+                if (/model|not found|unsupported|invalid/i.test(detailText)) {
+                    const modelErr = new Error("Selected model unavailable. Please switch models and try again.");
+                    modelErr.isModelUnavailable = true;
+                    throw modelErr;
+                }
+
+                const contextErr = new Error("Context limit exceeded. Please try again.");
+                contextErr.isContextLimit = true;
+                throw contextErr;
+            }
+            throw new Error(errorData.error || errorData.detail || `API error: ${response.status}`);
         }
 
         const data = await response.json();
 
-        console.log("API Response:", data);
-
         if (data.candidates && data.candidates[0] && data.candidates[0].content) {
             const responseText = data.candidates[0].content.parts[0].text;
 
-
-            aiHistory.push({ role: "user", parts: currentParts });
-
+            aiHistory.push({ role: "user", parts: [{ text: userQuery }] });
             aiHistory.push({ role: "model", parts: [{ text: responseText }] });
 
-            return responseText;
+            return {
+                text: responseText,
+                rateLimit: data._rateLimit || null,
+                model: typeof data._model === "string" ? data._model : DEFAULT_AI_MODEL
+            };
         } else {
             console.error("Unexpected response structure:", JSON.stringify(data, null, 2));
             throw new Error("Unexpected API response format. Check console for details.");
@@ -935,6 +1031,144 @@ Now answer the student's question:`;
     }
 }
 
+const AI_HISTORY_KEY = "aiQueryHistory";
+const AI_HISTORY_WINDOW_MS = 60 * 60 * 1000;
+
+async function saveAIHistoryEntry(promptText, answerText) {
+    try {
+        const now = Date.now();
+        const cutoff = now - AI_HISTORY_WINDOW_MS;
+
+        const existing = await new Promise((resolve) => {
+            chrome.storage.local.get({ [AI_HISTORY_KEY]: [] }, (data) => {
+                resolve(Array.isArray(data[AI_HISTORY_KEY]) ? data[AI_HISTORY_KEY] : []);
+            });
+        });
+
+        const filtered = existing.filter(entry => typeof entry.timestamp === "number" && entry.timestamp >= cutoff);
+
+        filtered.push({
+            prompt: promptText,
+            answer: answerText,
+            timestamp: now
+        });
+
+        chrome.storage.local.set({ [AI_HISTORY_KEY]: filtered });
+    } catch (err) {
+        console.error("Failed to save AI history entry:", err);
+    }
+}
+
+async function loadRecentAIHistory() {
+    const now = Date.now();
+    const cutoff = now - AI_HISTORY_WINDOW_MS;
+
+    return new Promise((resolve) => {
+        chrome.storage.local.get({ [AI_HISTORY_KEY]: [] }, (data) => {
+            const all = Array.isArray(data[AI_HISTORY_KEY]) ? data[AI_HISTORY_KEY] : [];
+            const recent = all
+                .filter(entry => typeof entry.timestamp === "number" && entry.timestamp >= cutoff)
+                .sort((a, b) => b.timestamp - a.timestamp);
+            resolve(recent);
+        });
+    });
+}
+
+function renderAIHistoryList(entries) {
+    const listEl = document.getElementById("aiHistoryList");
+    if (!listEl) return;
+
+    listEl.innerHTML = "";
+
+    if (!entries.length) {
+        listEl.innerHTML = `<div style="font-size: 12px; color: #777;">No AskAI history in the last hour.</div>`;
+        return;
+    }
+
+    const truncate = (text, maxLen) => {
+        const t = String(text ?? "");
+        if (t.length <= maxLen) return { text: t, truncated: false };
+        return { text: t.slice(0, maxLen).trimEnd() + "…", truncated: true };
+    };
+
+    entries.forEach(entry => {
+        const container = document.createElement("div");
+        container.style.borderBottom = "1px solid #eee";
+        container.style.padding = "6px 0";
+
+        const time = new Date(entry.timestamp);
+        const timeLabel = time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+        const timeEl = document.createElement("div");
+        timeEl.style.fontSize = "11px";
+        timeEl.style.color = "#999";
+        timeEl.style.marginBottom = "4px";
+        timeEl.textContent = timeLabel;
+
+        const qEl = document.createElement("div");
+        qEl.style.fontWeight = "600";
+        qEl.style.marginBottom = "3px";
+
+        const aEl = document.createElement("div");
+        aEl.style.whiteSpace = "pre-wrap";
+
+        const fullPrompt = String(entry.prompt ?? "");
+        const fullAnswer = String(entry.answer ?? "");
+        const promptPreview = truncate(fullPrompt, 220);
+        const answerPreview = truncate(fullAnswer, 700);
+
+        const hasMore = promptPreview.truncated || answerPreview.truncated;
+        let expanded = false;
+
+        const render = () => {
+            qEl.textContent = `Q: ${expanded ? fullPrompt : promptPreview.text}`;
+            aEl.textContent = `A: ${expanded ? fullAnswer : answerPreview.text}`;
+        };
+
+        render();
+
+        container.appendChild(timeEl);
+        container.appendChild(qEl);
+        container.appendChild(aEl);
+
+        if (hasMore) {
+            const toggleBtn = document.createElement("button");
+            toggleBtn.type = "button";
+            toggleBtn.textContent = "Show more";
+            toggleBtn.style.border = "none";
+            toggleBtn.style.background = "transparent";
+            toggleBtn.style.color = "#2196F3";
+            toggleBtn.style.cursor = "pointer";
+            toggleBtn.style.padding = "0";
+            toggleBtn.style.marginTop = "4px";
+            toggleBtn.style.fontSize = "12px";
+
+            toggleBtn.addEventListener("click", () => {
+                expanded = !expanded;
+                toggleBtn.textContent = expanded ? "Show less" : "Show more";
+                render();
+            });
+
+            container.appendChild(toggleBtn);
+        }
+
+        listEl.appendChild(container);
+    });
+}
+
+async function showAIHistoryView() {
+    const dialog = document.getElementById("aiHistoryDialog");
+
+    const entries = await loadRecentAIHistory();
+    renderAIHistoryList(entries);
+
+    if (dialog) dialog.style.display = "flex";
+}
+
+function hideAIHistoryView() {
+    const dialog = document.getElementById("aiHistoryDialog");
+    if (dialog) dialog.style.display = "none";
+}
 
 async function toggleAISection() {
     const aiSection = document.getElementById("aiSection");
@@ -959,18 +1193,166 @@ async function toggleAISection() {
     }
 
 
-    const userId = await getOrCreateUserId();
+    const installCtx = await getInstallationContext();
     if (userIdText) {
-        userIdText.textContent = userId;
+        userIdText.textContent = installCtx.userId;
     }
     if (userIdDisplay) {
         userIdDisplay.style.display = "block";
     }
 
     aiSection.style.display = "block";
+    await updateAIRateLimitDisplay();
 
     if (responseDiv) responseDiv.style.display = "none";
-    if (queryInput) queryInput.value = "";
+}
+
+function startAILoaderSequence() {
+    const loaderDiv = document.getElementById("aiLoader");
+    const statusText = document.getElementById("aiLoaderStatus");
+    if (!loaderDiv || !statusText) return;
+
+    let currentStep = 0;
+    statusText.textContent = AI_STATUS_SEQUENCE[currentStep];
+    loaderDiv.style.display = "block";
+
+    if (aiStatusIntervalId) clearInterval(aiStatusIntervalId);
+    aiStatusIntervalId = setInterval(() => {
+        if (currentStep < AI_STATUS_SEQUENCE.length - 1) {
+            currentStep += 1;
+            statusText.textContent = AI_STATUS_SEQUENCE[currentStep];
+        }
+    }, 2000);
+}
+
+function stopAILoaderSequence() {
+    const loaderDiv = document.getElementById("aiLoader");
+    if (aiStatusIntervalId) {
+        clearInterval(aiStatusIntervalId);
+        aiStatusIntervalId = null;
+    }
+    if (loaderDiv) {
+        loaderDiv.style.display = "none";
+    }
+}
+
+async function updateAIRateLimitDisplay(serverData) {
+    const rateLimitDisplay = document.getElementById("aiRateLimitDisplay");
+    const modelToggleRow = document.getElementById("aiModelToggleRow");
+    if (!rateLimitDisplay) return;
+
+    let info = serverData;
+    if (!info) {
+        info = await serverCheckRateLimit();
+    }
+
+    if (info.isWhitelisted != null) {
+        cachedIsWhitelisted = info.isWhitelisted;
+        syncAICharLimit();
+    }
+
+    if (info.isWhitelisted) {
+        rateLimitDisplay.textContent = "Queries remaining: No limit";
+        rateLimitDisplay.style.color = "#1e63e9";
+        if (modelToggleRow) {
+            modelToggleRow.style.display = "flex";
+        }
+        return;
+    }
+
+    if (modelToggleRow) {
+        modelToggleRow.style.display = "none";
+    }
+
+    const remaining = info.remaining ?? 0;
+    const max = info.max ?? MAX_QUERIES_PER_PERIOD;
+    let statusColor = "#2e7d32";
+
+    if (remaining <= 0) {
+        statusColor = "#d93025";
+    } else if (remaining === 1) {
+        statusColor = "#f9a825";
+    }
+
+    rateLimitDisplay.textContent = `Queries remaining: ${remaining}/${max}`;
+    rateLimitDisplay.style.color = statusColor;
+}
+
+function getCurrentAICharLimit() {
+    return cachedIsWhitelisted === true ? AI_MAX_CHARS_WHITELISTED : AI_MAX_CHARS_DEFAULT;
+}
+
+function syncAICharLimit() {
+    const aiQueryInput = document.getElementById("aiQueryInput");
+    const charCount = document.getElementById("aiCharCount");
+    if (!aiQueryInput) return;
+
+    const maxChars = getCurrentAICharLimit();
+    aiQueryInput.setAttribute("maxlength", String(maxChars));
+
+    if (aiQueryInput.value.length > maxChars) {
+        aiQueryInput.value = aiQueryInput.value.slice(0, maxChars);
+    }
+
+    if (charCount) {
+        charCount.textContent = String(maxChars - aiQueryInput.value.length);
+    }
+}
+
+function getSelectedAIModel() {
+    const modelSelect = document.getElementById("aiModelSelect");
+    const selected = modelSelect?.value;
+    if (selected === DEFAULT_AI_MODEL || selected === PREMIUM_AI_MODEL) {
+        return selected;
+    }
+    return DEFAULT_AI_MODEL;
+}
+
+function getModelDisplayName(model) {
+    if (model === PREMIUM_AI_MODEL) return "Gemini 3.0 Flash";
+    return "Gemini 2.5 Flash";
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatMarkdownInline(text) {
+    let escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    escaped = escaped.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+    escaped = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    escaped = escaped.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+
+    return escaped;
+}
+
+async function streamAIResponse(responseDiv, responseText, rateLimitLabel = "") {
+    if (!responseDiv) return;
+
+    responseDiv.innerHTML = "";
+    responseDiv.style.display = "block";
+
+    const lines = responseText.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = document.createElement("div");
+        line.className = "ai-response-line";
+        line.innerHTML = lines[i].length ? formatMarkdownInline(lines[i]) : " ";
+        responseDiv.appendChild(line);
+        responseDiv.scrollTop = responseDiv.scrollHeight;
+        await sleep(80);
+    }
+
+    if (rateLimitLabel) {
+        const note = document.createElement("div");
+        note.className = "ai-rate-limit-note";
+        note.textContent = rateLimitLabel;
+        responseDiv.appendChild(note);
+    }
 }
 
 function reEnableSendButton(clickTimestamp) {
@@ -996,7 +1378,6 @@ function reEnableSendButton(clickTimestamp) {
 async function handleAIQuery(clickTimestamp) {
     const queryInput = document.getElementById("aiQueryInput");
     const responseDiv = document.getElementById("aiResponse");
-    const loaderDiv = document.getElementById("aiLoader");
     const sendButton = document.getElementById("sendAIQuery");
 
     const userQuery = queryInput.value.trim();
@@ -1005,30 +1386,8 @@ async function handleAIQuery(clickTimestamp) {
         return;
     }
 
-
-    getOrCreateUserId().then(uid => {
-        fetch(ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ prompt: userQuery, userId: uid })
-        }).catch(err => console.log("Failed", err));
-    });
-
-    const whitelisted = await isUserWhitelisted();
-
-    if (!whitelisted) {
-        const rateLimit = await checkRateLimit();
-        if (!rateLimit.allowed) {
-            const hoursRemaining = RATE_LIMIT_RESET_HOURS;
-            responseDiv.innerHTML = `<span style="color: red;">Rate limit exceeded. You've used ${rateLimit.count} queries in the last ${hoursRemaining} hours. Please try again later.`;
-            responseDiv.style.display = "block";
-            reEnableSendButton(clickTimestamp);
-            return;
-        }
-    }
-
     sendButton.disabled = true;
-    loaderDiv.style.display = "block";
+    startAILoaderSequence();
     responseDiv.style.display = "none";
 
     try {
@@ -1037,36 +1396,35 @@ async function handleAIQuery(clickTimestamp) {
             throw new Error("No grade data available. Please calculate your grade first.");
         }
 
-
         const currentGrade = originalGrade || (document.querySelector(".grade-value")?.textContent?.replace('%', '') || 0);
+        const shouldCompress = useCompressedContext && cachedIsWhitelisted === false;
+        const formattedData = shouldCompress
+            ? formatGradeDataCompressed(gradeData, parseFloat(currentGrade) || 0)
+            : formatGradeDataForAPI(gradeData, parseFloat(currentGrade) || 0);
 
+        const result = await callGeminiAPI(userQuery, formattedData);
 
-        const formattedData = formatGradeDataForAPI(gradeData, parseFloat(currentGrade) || 0);
+        useCompressedContext = false;
+        stopAILoaderSequence();
+        await sleep(50);
 
-
-        const userId = await getOrCreateUserId();
-        const response = await callGeminiAPI(userQuery, formattedData, userId);
-
-        const isWhitelisted = await isUserWhitelisted();
-        if (!isWhitelisted) {
-            await incrementRateLimit();
-
-            const updatedRateLimit = await checkRateLimit();
-            const rateLimitInfo = updatedRateLimit.remaining < 3 ?
-                `<br><small style="color: #ff9800;">Remaining queries: ${updatedRateLimit.remaining}/${MAX_QUERIES_PER_PERIOD}</small>` : '';
-
-            responseDiv.innerHTML = response.replace(/\n/g, '<br>') + rateLimitInfo;
-        } else {
-            responseDiv.innerHTML = response.replace(/\n/g, '<br>');
-        }
-        responseDiv.style.display = "block";
-
-        queryInput.value = "";
+        const modelLabel = cachedIsWhitelisted === true
+            ? `Using: ${getModelDisplayName(result.model)}`
+            : "";
+        responseDiv.style.color = "#333";
+        await streamAIResponse(responseDiv, result.text, modelLabel);
+        await updateAIRateLimitDisplay(result.rateLimit);
+        await saveAIHistoryEntry(userQuery, result.text);
     } catch (error) {
-        responseDiv.innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+        stopAILoaderSequence();
+        if (error.isContextLimit && cachedIsWhitelisted === false) {
+            useCompressedContext = true;
+        }
+        responseDiv.textContent = `Error: ${error.message}`;
+        responseDiv.style.color = "red";
         responseDiv.style.display = "block";
+        await updateAIRateLimitDisplay();
     } finally {
-        loaderDiv.style.display = "none";
         reEnableSendButton(clickTimestamp);
     }
 }
@@ -1079,26 +1437,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('show-compact');
     }
 
-    function performCalculation() {
-        showLoader();
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (!tabs[0] || !tabs[0].id) {
-                console.error("No active tab to calculate grade.");
-                showCompactErrorView();
-                return;
-            }
-
-            chrome.tabs.sendMessage(tabs[0].id, { action: "calculateGrade" }, (response) => {
-                if (chrome.runtime.lastError) {
-                    console.error("Runtime error from calculateGrade:", chrome.runtime.lastError.message);
-                    showCompactErrorView();
-                } else if (response && response.success) {
-                    displayResult(response);
-                } else {
-                    showCompactErrorView();
-                }
-            });
-        });
+    function isAeriesHostUrl(url) {
+        if (typeof url !== "string" || !url) return false;
+        try {
+            const parsed = new URL(url);
+            const host = parsed.hostname.toLowerCase();
+            return host.endsWith(".aeries.net")
+                || host.endsWith(".aeries.com")
+                || host.endsWith(".aeriescloud.net");
+        } catch (_error) {
+            return false;
+        }
     }
 
     const compactRefreshBtn = document.getElementById("compactRefreshBtn");
@@ -1114,6 +1463,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function injectContentScriptsAndRetry(tabId) {
         try {
+            const tab = await chrome.tabs.get(tabId);
+            if (!isAeriesHostUrl(tab?.url)) {
+                showCompactErrorView();
+                return;
+            }
+
             await chrome.scripting.executeScript({
                 target: { tabId: tabId },
                 files: ['content-detector.js', 'content.js']
@@ -1161,10 +1516,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById("calculate").addEventListener("click", () => {
-        performCalculation();
-    });
-
     const resetButton = document.getElementById("resetHistory");
     resetButton.addEventListener("click", () => {
         const teacher = document.getElementById("result")?.getAttribute("data-teacher");
@@ -1197,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 incrementHiddenDismissal(currentTeacher);
 
                 checkHiddenAssignmentDismissal(currentTeacher).then(count => {
-                    if (count >= 2) {
+                    if (count >= HIDDEN_WARNING_DISMISS_LIMIT) {
                         const warningIcon = document.getElementById("hiddenWarningIcon");
                         if (warningIcon) {
                             warningIcon.style.display = "none";
@@ -1248,7 +1599,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resetAssignmentForm();
         isEditingExistingAssignment = true;
-        confirmAssignment.textContent = "Update (Aeries) Assignment";
+        confirmAssignment.textContent = "Update Assignment";
         categorySelect.value = "";
         assignmentSelect.innerHTML = '<option value="" disabled selected>Select category first</option>';
         assignmentSelect.style.display = "block";
@@ -1384,7 +1735,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const askAIButton = document.getElementById("askAI");
     const sendAIQueryButton = document.getElementById("sendAIQuery");
     const aiQueryInput = document.getElementById("aiQueryInput");
-    const copyUserIdButton = document.getElementById("copyUserId");
+    const aiHistoryButton = document.getElementById("aiHistoryButton");
+    const aiModelSelect = document.getElementById("aiModelSelect");
+
+    if (aiModelSelect) {
+        chrome.storage.local.get({ [AI_MODEL_KEY]: DEFAULT_AI_MODEL }, (data) => {
+            const savedModel = data[AI_MODEL_KEY];
+            aiModelSelect.value = (savedModel === PREMIUM_AI_MODEL || savedModel === DEFAULT_AI_MODEL)
+                ? savedModel
+                : DEFAULT_AI_MODEL;
+        });
+
+        aiModelSelect.addEventListener("change", () => {
+            const nextModel = getSelectedAIModel();
+            chrome.storage.local.set({ [AI_MODEL_KEY]: nextModel });
+        });
+    }
 
     if (askAIButton) {
         askAIButton.onclick = null;
@@ -1402,22 +1768,68 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
 
             sendAIQueryButton.disabled = true;
+            sendAIQueryButton.dataset.sending = "1";
             const clickTimestamp = Date.now();
 
-            handleAIQuery(clickTimestamp);
+            handleAIQuery(clickTimestamp).finally(() => {
+                delete sendAIQueryButton.dataset.sending;
+                updateAIInputState();
+            });
         });
     }
 
+    if (aiHistoryButton) {
+        aiHistoryButton.addEventListener("click", async (e) => {
+            e.preventDefault();
+            await showAIHistoryView();
+        });
+    }
+
+    const AI_MIN_CHARS = 3;
+
+    function updateAIInputState() {
+        if (!aiQueryInput) return;
+        const len = aiQueryInput.value.length;
+        const AI_MAX_CHARS = getCurrentAICharLimit();
+        const remaining = AI_MAX_CHARS - len;
+
+        const charCount = document.getElementById("aiCharCount");
+        if (charCount) {
+            charCount.textContent = remaining;
+            if (remaining <= 0) {
+                charCount.style.color = "#d93025";
+            } else if (remaining < 50) {
+                charCount.style.color = "#f9a825";
+            } else {
+                charCount.style.color = "#999";
+            }
+        }
+
+        if (sendAIQueryButton && !sendAIQueryButton.dataset.sending) {
+            sendAIQueryButton.disabled = len < AI_MIN_CHARS;
+        }
+    }
+
     if (aiQueryInput) {
+        syncAICharLimit();
+        aiQueryInput.addEventListener("input", updateAIInputState);
+
         aiQueryInput.addEventListener("keypress", (e) => {
             if (e.key === "Enter" && e.ctrlKey) {
                 e.preventDefault();
 
+                const trimmed = aiQueryInput.value.trim();
+                if (trimmed.length < AI_MIN_CHARS) return;
+
                 const sendButton = document.getElementById("sendAIQuery");
                 if (sendButton) {
                     sendButton.disabled = true;
+                    sendButton.dataset.sending = "1";
                     const clickTimestamp = Date.now();
-                    handleAIQuery(clickTimestamp);
+                    handleAIQuery(clickTimestamp).finally(() => {
+                        delete sendButton.dataset.sending;
+                        updateAIInputState();
+                    });
                 } else {
                     handleAIQuery(Date.now());
                 }
@@ -1425,42 +1837,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (copyUserIdButton) {
-        copyUserIdButton.addEventListener("click", async () => {
-            const userId = await getOrCreateUserId();
-            navigator.clipboard.writeText(userId).then(() => {
-                const originalText = copyUserIdButton.textContent;
-                copyUserIdButton.textContent = "Copied!";
-                copyUserIdButton.style.backgroundColor = "#45a049";
-                setTimeout(() => {
-                    copyUserIdButton.textContent = originalText;
-                    copyUserIdButton.style.backgroundColor = "#4CAF50";
-                }, 2000);
-            }).catch(err => {
-                console.error("Failed to copy:", err);
-                alert("Failed to copy. Your User ID: " + userId);
-            });
+    const aiHistoryBackButton = document.getElementById("aiHistoryBackButton");
+    if (aiHistoryBackButton) {
+        aiHistoryBackButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            hideAIHistoryView();
         });
     }
 
     // Share button functionality
     const shareButton = document.getElementById("shareButton");
-    const copiedPopup = document.getElementById("copiedPopup");
+    const shareButtonText = document.getElementById("shareButtonText");
+    let shareButtonResetTimer = null;
 
     if (shareButton) {
         shareButton.addEventListener("click", async () => {
-            const extensionUrl = "https://bit.ly/aeriescalc";
+            const extensionUrl = "https://chromewebstore.google.com/detail/aeries-grade-calculator/dmambbnjadglkainpnjfidolknpdoljm";
 
             try {
                 await navigator.clipboard.writeText(extensionUrl);
 
-                if (copiedPopup) {
-                    copiedPopup.classList.add("show");
+                shareButton.classList.add("copied");
+                if (shareButtonText) shareButtonText.textContent = "copied!";
 
-                    setTimeout(() => {
-                        copiedPopup.classList.remove("show");
-                    }, 1000);
-                }
+                if (shareButtonResetTimer) clearTimeout(shareButtonResetTimer);
+                shareButtonResetTimer = setTimeout(() => {
+                    shareButton.classList.remove("copied");
+                    if (shareButtonText) shareButtonText.textContent = "share!";
+                    shareButtonResetTimer = null;
+                }, 1500);
             } catch (err) {
                 console.error("Failed to copy link:", err);
                 alert("Copy this link: " + extensionUrl);

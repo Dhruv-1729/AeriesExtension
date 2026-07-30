@@ -31,3 +31,20 @@ build/
 # Logs
 *.log
 npm-debug.log*
+
+# Agent/AI folders and MCP deploy clutter (keep out of repo and local tree)
+agent-transcripts/
+.cursor/
+.agent/
+.agents/
+.supabase/
+supabase/
+
+# One-off MCP / deploy artifacts
+deploy_args_only.json
+deploy_mcp.json
+deploy_now.json
+final_deploy.json
+mcp_invoke.json
+mcp_string.txt
+skills-lock.json

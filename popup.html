@@ -31,19 +31,17 @@
       margin-top: 10px;
     }
 
-
     body {
       font-family: Arial, sans-serif;
       width: 350px;
-      height: 500px;
+      min-height: 500px;
       padding: 15px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      background: white;
+      background-color: #f8f8fbf6;
     }
 
-    /* When showing compact error, switch to small size and teal background */
     body.show-compact {
       width: 300px;
       height: auto;
@@ -51,7 +49,7 @@
       padding: 0;
       justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, #b2ebf2 0%, #80deea 50%, #4dd0e1 100%);
+      background-color: #7defe7d4;
     }
 
     body.show-compact #compactRefreshBtn:hover {
@@ -86,28 +84,12 @@
     h2 {
       color: darkgreen;
       margin-bottom: 5px;
+      text-align: center;
     }
 
     h4 {
       color: blue;
       margin-bottom: 15px;
-    }
-
-    #calculate {
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      display: block;
-      margin: 0 auto;
-    }
-
-    #calculate:hover {
-      background-color: #45a049;
     }
 
     .grade-history div {
@@ -134,6 +116,9 @@
       margin-bottom: 20px;
       text-align: center;
       position: relative;
+      min-height: 50px;
+      padding-left: 40px;
+      padding-right: 40px;
     }
 
     .grade-label {
@@ -151,19 +136,6 @@
 
 
 
-
-    .calculate-icon {
-      cursor: pointer;
-      height: 32px;
-      width: 32px;
-      margin-left: 15px;
-      display: none;
-      vertical-align: middle;
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-    }
 
     .grade-container {
       display: flex;
@@ -193,56 +165,20 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      transition: all 0.3s ease;
-      position: relative;
-      bottom: 10px;
+      transition: background-color 0.3s ease;
     }
 
     .share-button:hover {
       background-color: #9340b5;
     }
 
-    .share-button svg {
-      width: 11px;
-      height: 11px;
-      fill: white;
-    }
-
-    .copied-popup {
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
+    .share-button.copied {
       background-color: #4CAF50;
-      color: white;
-      padding: 5px 10px;
-      border-radius: 4px;
-      font-size: 11px;
-      white-space: nowrap;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s, visibility 0.3s;
-      margin-bottom: 5px;
-    }
-
-    .copied-popup::after {
-      content: '';
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      border: 5px solid transparent;
-      border-top-color: #4CAF50;
-    }
-
-    .copied-popup.show {
-      opacity: 1;
-      visibility: visible;
     }
 
     .reset-button {
-      padding: 6px 12px;
-      font-size: 12px;
+      padding: 4.5px 9px;
+      font-size: 9px;
       background-color: #e85a3c;
       color: white;
       border: none;
@@ -250,7 +186,7 @@
       cursor: pointer;
       transition: all 0.3s ease-in-out;
       margin-top: 10px;
-      width: 100px;
+      width: 75px;
       text-align: center;
     }
 
@@ -343,6 +279,44 @@
       align-items: center;
       margin-bottom: 10px;
       width: 100%;
+      position: relative;
+    }
+
+    .live-percentage-display {
+      position: absolute;
+      right: 15px;
+      color: #41424C;
+      font-size: 14px;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .live-percentage-display.visible {
+      opacity: 1;
+    }
+
+    /* Edit mode percentage display */
+    .edit-percentage-wrapper {
+      display: none;
+    }
+
+    .edit-percentage-wrapper.visible {
+      display: block;
+    }
+
+    .edit-percentage-display {
+      color: #41424C;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .form-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      width: 100%;
     }
 
     .remove-assignment-btn {
@@ -360,6 +334,11 @@
 
     .remove-assignment-btn:hover {
       background-color: #ca221c;
+    }
+
+
+    .remove-assignment-btn:disabled {
+      opacity: 0.5;
     }
 
     .score-input input {
@@ -511,6 +490,7 @@
       left: 15px;
       top: 50%;
       transform: translateY(-50%);
+      z-index: 10;
     }
 
     .hidden-dialog-overlay {
@@ -589,10 +569,6 @@
 
     .edit-btn:hover {
       background-color: #02033b;
-    }
-
-    .delete-btn:hover {
-      background-color: #ff3333;
     }
 
     /* Fancy Error State Styles */
@@ -687,6 +663,48 @@
       font-weight: bold;
     }
 
+    .ai-loader-text {
+      margin-top: 2px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      background: linear-gradient(110deg, #4f6bff 20%, #a5b4fc 35%, #4f6bff 50%);
+      background-size: 220% auto;
+      color: transparent;
+      -webkit-background-clip: text;
+      background-clip: text;
+      animation: aiShimmer 1.8s linear infinite;
+    }
+
+    @keyframes aiShimmer {
+      0% {
+        background-position: 180% center;
+      }
+
+      100% {
+        background-position: -40% center;
+      }
+    }
+
+    .ai-response-line {
+      opacity: 0;
+      transform: translateY(4px);
+      animation: aiLineReveal 0.25s ease-out forwards;
+    }
+
+    @keyframes aiLineReveal {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .ai-rate-limit-note {
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
     #aiQueryInput:focus {
       outline: none;
       border-color: #2196F3;
@@ -696,61 +714,264 @@
       background-color: #1976D2;
     }
 
-    #sendAIQuery:disabled {
-      background-color: #a0a0a0;
-      cursor: not-allowed;
+    /* ===== Compact error view ===== */
+    .compact-error-message {
+      font-size: 1.2em;
+      font-weight: 600;
+      color: #004d5a;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    }
+
+    #compactRefreshBtn {
+      background-color: white;
+      color: #00838f;
+      border: none;
+      border-radius: 25px;
+      padding: 12px 36px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    /* ===== Ask AI button ===== */
+    #askAI {
+      display: none;
+      margin: 10px auto;
+      padding: 5px 10px;
+      font-size: 16px;
+      background: linear-gradient(135deg, #2196F3, #64B5F6);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: opacity 0.3s;
+      width: 25%;
+    }
+
+    /* ===== AI section internals ===== */
+    .ai-info-pill {
+      margin-bottom: 10px;
+      padding: 8px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    #userIdDisplay {
+      color: #666;
+    }
+
+    #userIdText {
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    #aiRateLimitDisplay {
+      color: #2e7d32;
+      font-weight: 600;
+    }
+
+    #aiModelToggleRow {
+      display: none;
+      color: #333;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ai-model-label {
+      font-weight: 600;
+    }
+
+    #aiModelSelect {
+      flex: 1;
+      padding: 4px 6px;
+      border: 1px solid #cfcfcf;
+      border-radius: 4px;
+      font-size: 11px;
+      background-color: #fff;
+    }
+
+    .ai-input-wrapper {
+      position: relative;
+    }
+
+    #aiQueryInput {
+      width: 100%;
+      padding: 8px;
+      padding-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      min-height: 60px;
+      resize: none;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    #aiCharCount {
+      position: absolute;
+      bottom: 5px;
+      right: 8px;
+      font-size: 10px;
+      color: #999;
+      pointer-events: none;
+    }
+
+    .ai-button-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    #aiHistoryButton {
+      position: absolute;
+      left: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #sendAIQuery {
+      width: 220px;
+      padding: 8px 16px;
+      font-size: 14px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #aiLoader {
+      display: none;
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    #aiResponse {
+      display: none;
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #333;
+      white-space: pre-wrap;
+    }
+
+    /* ===== Dialog content overrides ===== */
+    #aiHistoryDialog .hidden-dialog-content {
+      max-width: 320px;
+      max-height: 420px;
+    }
+
+    .dialog-title {
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .dialog-title--ai {
+      color: #2196F3;
+    }
+
+    .dialog-title--hidden {
+      color: #8c0d09;
+    }
+
+    .dialog-subtitle {
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    #aiHistoryList {
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    #editAssignmentBtn {
+      background-color: #36cef7;
+      margin-top: 10px;
     }
   </style>
 </head>
 
 <body>
-  <!-- Compact Error View (hidden by default, shown by JS when not on correct page) -->
   <div class="compact-error-view">
-    <div
-      style="font-size: 1.2em; font-weight: 600; color: #004d5a; margin-bottom: 20px; line-height: 1.5; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);">
-      Navigate to the class's<br><b>gradebook details page</b><br>and refresh
+    <div class="compact-error-message">
+      Navigate to the class's<br><b>gradebook details page</b><br>
     </div>
-    <button id="compactRefreshBtn"
-      style="background-color: white; color: #00838f; border: none; border-radius: 25px; padding: 12px 36px; font-size: 1em; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); transition: all 0.3s ease;">
-      Refresh
-    </button>
+    <button id="compactRefreshBtn">Refresh</button>
   </div>
 
-  <!-- Main Content (hidden by default, shown by JS when on correct page) -->
   <div class="main-content">
     <h2 id="mainHeader">Aeries Grade Calculator</h2>
-    <h4 id="subHeader">Go to the subject's <u>gradebook details</u> page and click the button to fetch grades!</h4>
+    <button id="askAI">Ask AI</button>
 
-    <button id="calculate">Calculate Grade</button>
-    <button id="askAI"
-      style="display: none; margin: 10px auto; padding: 5px 10px; font-size: 16px; background: linear-gradient(135deg, #2196F3, #64B5F6); color: white; border: none; border-radius: 5px; cursor: pointer; transition: opacity 0.3s; width: 25%;">
-      Ask AI
-    </button>
+    <div id="aiSection" class="ai-section">
+      <div class="ai-header">AI Grade Assistant</div>
 
-    <div id="aiSection" class="ai-section"
-      style="display: none; margin-top: 15px; padding: 15px; border-top: 3px solid #ddd;">
-      <div class="ai-header" style="font-size: 16px; color: #2196F3; margin-bottom: 10px; font-weight: bold;">AI Grade
-        Assistant</div>
+      <div id="userIdDisplay" class="ai-info-pill">
+        <strong>User ID:</strong> <span id="userIdText"></span>
+      </div>
 
-      <div id="userIdDisplay"
-        style="margin-bottom: 10px; padding: 8px; background-color: #f0f0f0; border-radius: 4px; font-size: 11px; color: #666;">
-        <strong>User ID:</strong> <span id="userIdText" style="font-family: monospace; word-break: break-all;"></span>
+      <div id="aiRateLimitDisplay" class="ai-info-pill">
+        Queries remaining: --
+      </div>
+
+      <div id="aiModelToggleRow" class="ai-info-pill">
+        <span class="ai-model-label">AI Model:</span>
+        <select id="aiModelSelect">
+          <option value="gemini-2.5-flash">2.5 Flash</option>
+          <option value="gemini-3-flash-preview">3 Flash (Preview)</option>
+        </select>
       </div>
 
       <div id="aiQueryContainer">
-        <textarea id="aiQueryInput" placeholder="ask a question about your grades!"
-          style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; min-height: 60px; resize: vertical; box-sizing: border-box; font-family: Arial, sans-serif;"></textarea>
-        <button id="sendAIQuery"
-          style="margin-top: 10px; padding: 8px 16px; font-size: 14px; background-color: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%;">Send</button>
+        <div class="ai-input-wrapper">
+          <textarea id="aiQueryInput" placeholder="ask a question about your grades!" maxlength="500"></textarea>
+          <span id="aiCharCount">500</span>
+        </div>
+        <div class="ai-button-row">
+          <button id="aiHistoryButton" title="View prompt history">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#666">
+              <path
+                d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7v3l4-4-4-4v3zM12 8a1 1 0 0 0-1 1v4.414l2.293 2.293 1.414-1.414L13 11.586V9a1 1 0 0 0-1-1z" />
+            </svg>
+          </button>
+          <button id="sendAIQuery" disabled>Send</button>
+        </div>
       </div>
 
-      <div id="aiLoader" style="display: none; text-align: center; margin-top: 15px;">
-        <div class="spinner" style="margin: 0 auto;"></div>
-        <p style="margin-top: 10px; font-size: 12px; color: #666;">Thinking...</p>
+      <div id="aiLoader">
+        <p id="aiLoaderStatus" class="ai-loader-text">Thinking...</p>
       </div>
 
-      <div id="aiResponse"
-        style="margin-top: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 5px; border: 1px solid #ddd; display: none; max-height: 200px; overflow-y: auto; font-size: 12px; line-height: 1.5; color: #333;">
+      <div id="aiResponse"></div>
+
+    </div>
+
+    <div id="aiHistoryDialog" class="hidden-dialog-overlay" style="display: none;">
+      <div class="hidden-dialog-content">
+        <button id="aiHistoryBackButton" class="dialog-close-btn">&times;</button>
+        <h3 class="dialog-title dialog-title--ai">Query History</h3>
+        <p class="dialog-subtitle">Last hour</p>
+        <div id="aiHistoryList"></div>
       </div>
     </div>
 
@@ -770,11 +991,10 @@
     </div>
 
 
-    <!-- Add this dialog at the end of the result div, before it closes -->
     <div id="hiddenAssignmentDialog" class="hidden-dialog-overlay" style="display: none;">
       <div class="hidden-dialog-content">
         <button id="closeHiddenDialog" class="dialog-close-btn">&times;</button>
-        <h3 style="color: #8c0d09; font-weight: bold; margin-bottom: 15px;">Hidden Graded Assignments</h3>
+        <h3 class="dialog-title dialog-title--hidden">Hidden Graded Assignments</h3>
         <div id="hiddenAssignmentList"></div>
       </div>
     </div>
@@ -791,7 +1011,7 @@
       <button id="addAssignmentBtn" class="add-assignment-btn">
         Add Assignment <span class="plus-icon">+</span>
       </button>
-      <button id="editAssignmentBtn" class="add-assignment-btn" style="background-color: #36cef7; margin-top: 10px;">
+      <button id="editAssignmentBtn" class="add-assignment-btn">
         Edit Existing Assignment
       </button>
 
@@ -810,10 +1030,17 @@
           <span>of</span>
           <input type="number" id="scoreMax" placeholder="0" min="0">
           <span>points</span>
+          <span id="livePercentageDisplay" class="live-percentage-display"></span>
           <button id="removeAssignmentBtn" class="remove-assignment-btn" style="display: none;">REMOVE
             ASSIGNMENT</button>
         </div>
-        <button id="confirmAssignment" class="confirm-btn" disabled>Input Assignment</button>
+
+        <div class="form-footer">
+          <button id="confirmAssignment" class="confirm-btn" disabled>Input Assignment</button>
+          <div id="editPercentageWrapper" class="edit-percentage-wrapper">
+            <span id="editPercentageDisplay" class="edit-percentage-display"></span>
+          </div>
+        </div>
       </div>
       <div class="assignments-container">
         <h4 class="assignments-header">Added Assignments</h4>
@@ -822,17 +1049,11 @@
         </div>
       </div>
     </div>
-  </div>
   </div> <!-- Close main-content -->
 
   <div class="footer main-content">
     <button id="shareButton" class="share-button">
-      share!
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-        <path
-          d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" />
-      </svg>
-      <span id="copiedPopup" class="copied-popup">copied!</span>
+      <span id="shareButtonText">share!</span>
     </button>
     <span> Extension made by Dhruv :&#x29;</span>
   </div>
