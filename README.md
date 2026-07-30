@@ -9,6 +9,21 @@
 
 ## Find this extension on the [chrome web store!](https://chromewebstore.google.com/detail/aeries-grade-calculator/dmambbnjadglkainpnjfidolknpdoljm)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### Manual Installation
 
 1. Download this extension: [![](https://img.shields.io/badge/Aeries_Grade_Extension-v14.3-blue)](https://github.com/Dhruv-1729/dhruvextension/releases/tag/14.3)
