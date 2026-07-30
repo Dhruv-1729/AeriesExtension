@@ -1,4 +1,4 @@
-const UNINSTALL_FEEDBACK_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfvYI6df6WsqPEXMP9e_kfyHYp6ODtkVglU-cJCDh5QGbNcmQ/viewform?usp=sharing&ouid=114550196942450109680";
+const UNINSTALL_FEEDBACK_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfvYI6df6WsqPEXMP9e_kfyHYp6ODtkVglU-cJCDh5QGbNcmQ/viewform?usp=sharing";
 const EDGE_FUNCTION_URL = "https://htxvtjdkalfnujztetmi.supabase.co/functions/v1/gemini-proxy";
 const INSTALL_TOKEN_KEY = "installToken";
 const INSTALL_USER_ID_KEY = "installUserId";
